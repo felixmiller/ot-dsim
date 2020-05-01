@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from . instructions import *
+from . instructions_ot import InstructionFactory as InstructionFactoryOt
 
 
 class Assembler:
@@ -21,6 +22,7 @@ class Assembler:
 
     def __init__(self, lines):
         self.ins_fac = InstructionFactory()
+        self.ins_fac_ot = InstructionFactoryOt()
         self.lines = lines
         self.ctx = self.__create_index()
         self.__check_fun_len()
@@ -35,6 +37,14 @@ class Assembler:
             if not tokens:
                 continue
             if self.ins_fac.is_valid_mnem(tokens[0]):
+                params = ''
+                if len(tokens) > 1:
+                    params = line.strip().split(maxsplit=1)[1]
+                if tokens[0] == self.TOK_LOOP:
+                    loop_stack.append(len(self.instr))
+                self.instr.append((tokens[0], (params, i)))
+
+            elif self.ins_fac_ot.is_valid_mnem(tokens[0]):
                 params = ''
                 if len(tokens) > 1:
                     params = line.strip().split(maxsplit=1)[1]
@@ -131,7 +141,10 @@ class Assembler:
             params = item[1][0]
             asm_str = mnem + ' ' + params
             try:
-                ins_obj = self.ins_fac.factory_asm(address, asm_str, self.ctx)
+                if self.ins_fac.is_valid_mnem(mnem):
+                    ins_obj = self.ins_fac.factory_asm(address, asm_str, self.ctx)
+                else:
+                    ins_obj = self.ins_fac_ot.factory_asm(address, asm_str, self.ctx)
                 if ins_obj != 0:
                     self.ins_objects.append(ins_obj)
 
