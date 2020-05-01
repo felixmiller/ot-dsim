@@ -9,11 +9,21 @@ the p256 lib.
 """
 
 from bignum_lib.machine import Machine
+from bignum_lib.sim_helpers import *
 from sim import ins_objects_from_hex_file
 from Crypto.Math.Numbers import Integer
 from Crypto.PublicKey import ECC
 from Crypto.Hash import SHA256
 from Crypto.Signature import DSS
+import sys
+
+# Switch to True to get a full instruction trace
+ENABLE_TRACE_DUMP = False
+
+# Configuration for the statistics prints
+STATS_CONFIG = {
+    'instruction_histo_sort_by': 'key',
+}
 
 BN_WORD_LEN = 256
 BN_LIMB_LEN = 32
@@ -77,6 +87,7 @@ ins_objects = []
 dmem = []
 inst_cnt = 0
 cycle_cnt = 0
+stats = init_stats()
 
 # Helper functions
 def bit_len(int_type):
@@ -196,18 +207,24 @@ def load_program():
     insfile.close()
 
 
+def dump_trace_str(trace_string):
+    if ENABLE_TRACE_DUMP:
+        print(trace_string)
+
+
 def run_isoncurve(x, y):
     """Runs the isoncurve primitive to check if a point is a valid curve point"""
     global dmem
     global inst_cnt
     global cycle_cnt
     global ctx
+    global stats
     load_pointer()
     machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -217,9 +234,10 @@ def run_isoncurve(x, y):
     machine.pc = P256ISONCURVE_START_ADDR
     machine.stop_addr = P256ISONCURVE_STOP_ADDR
     cont = True
+    machine.stats = stats
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -233,12 +251,14 @@ def run_scalarmult(x, y, k):
     global inst_cnt
     global cycle_cnt
     global ctx
+    global stats
     load_pointer()
     machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
+    machine.stats = stats
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -248,10 +268,11 @@ def run_scalarmult(x, y, k):
     machine.dmem = dmem.copy()
     machine.pc = P256SCALARMULT_START_ADDR
     machine.stop_addr = P256SCALARMULT_STOP_ADDR
+    machine.stats = stats
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -264,12 +285,13 @@ def run_sign(d, k, msg):
     global inst_cnt
     global cycle_cnt
     global ctx
+    global stats
     load_pointer()
     machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -279,10 +301,11 @@ def run_sign(d, k, msg):
     machine.dmem = dmem.copy()
     machine.pc = P256SIGN_START_ADDR
     machine.stop_addr = P256SIGN_STOP_ADDR
+    machine.stats = stats
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -295,12 +318,14 @@ def run_verify(x, y, r, s, msg):
     global inst_cnt
     global cycle_cnt
     global ctx
+    global stats
     load_pointer()
     machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
+    machine.stats = stats
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
@@ -312,50 +337,33 @@ def run_verify(x, y, r, s, msg):
     machine.dmem = dmem.copy()
     machine.pc = P256VERIFY_START_ADDR
     machine.stop_addr = P256VERIFY_STOP_ADDR
+    machine.stats = stats
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
-        print(trace_str)
+        dump_trace_str(trace_str)
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
     # Verification successful if r == rnd
     return dmem[pR] == dmem[pRnd]
 
-
-def main():
-    global inst_cnt
-    global cycle_cnt
-    global ctx
-    """main"""
-    init_dmem()
-    load_program()
-
-    # curve point test (deterministic)
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_curvepoint_deterministic():
     res = run_isoncurve(xexp, yexp)
     if not res:
         raise Exception('Test point (deterministic) should be on curve')
-    ins_point_test = inst_cnt
-    cyc_point_test = cycle_cnt
 
-    # curve point test (random)
+def run_test_curvepoint_random():
     #rand = Integer.random_range(min_inclusive=1, max_exclusive=P256_CURVE_ORDER)
     randkey = ECC.generate(curve='P-256')
     randx = int(randkey.public_key().pointQ.x.to_bytes(32).hex(), 16)
     randy = int(randkey.public_key().pointQ.y.to_bytes(32).hex(), 16)
-    inst_cnt = 0
-    cycle_cnt = 0
+
     res = run_isoncurve(randx, randy)
     if not res:
-        raise Exception('Test point (deterministic) should be on curve')
-    ins_point_test_rnd = inst_cnt
-    cyc_point_test_rnd = cycle_cnt
+        raise Exception('Test point (random) should be on curve')
 
-    # scalar multiplication (deterministic)
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_scalarmul_deterministic():
     pointexp = ECC.EccPoint(xexp, yexp, curve='p256')
     resref = pointexp*kexp
     init_dmem()
@@ -363,12 +371,8 @@ def main():
     resbn = ECC.EccPoint(xres, yres, curve='p256')
     if not resref == resbn:
         raise Exception('Wrong result for scalar point multiplication (deterministic)')
-    ins_scalar_mult = inst_cnt
-    cyc_scalar_mult = cycle_cnt
 
-    # scalar multiplication (random)
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_scalarmul_random():
     randkey = ECC.generate(curve='P-256')
     randx = int(randkey.public_key().pointQ.x.to_bytes(32).hex(), 16)
     randy = int(randkey.public_key().pointQ.y.to_bytes(32).hex(), 16)
@@ -379,30 +383,22 @@ def main():
     xres, yres = run_scalarmult(randx,randy, randk)
     resbn = ECC.EccPoint(xres, yres, curve='p256')
     if not resref == resbn:
-        raise Exception('Wrong result for scalar point multiplication (deterministic)')
-    ins_scalar_mult_rand = inst_cnt
-    cyc_scalar_mult_rand = cycle_cnt
+        raise Exception('Wrong result for scalar point multiplication (random)')
 
-    # ECDSA sign (deterministic)
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_ecdsa_sign_deterministic():
     init_dmem()
     rres, sres = run_sign(d, kexp, msg_digest_int)
     rresb = rres.to_bytes(32, byteorder='big', signed=False)
     sresb = sres.to_bytes(32, byteorder='big', signed=False)
     rsresb = b''.join([rresb, sresb])
-    verkey =ECC.construct(curve='p256', point_x=x, point_y=y, d=d)
+    verkey = ECC.construct(curve='p256', point_x=x, point_y=y, d=d)
     verifier = DSS.new(verkey, 'fips-186-3')
     try:
         verifier.verify(msg_digest, rsresb)
     except ValueError:
         raise Exception('ECDSA sign (deterministic) failed')
-    ins_sign = inst_cnt
-    cyc_sign = cycle_cnt
 
-    # ECDSA sign (random (random key, random k, deterministic message digest))
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_ecdsa_sign_random():
     init_dmem()
     randkey = ECC.generate(curve='P-256')
     randd = int(randkey.d.to_bytes(32).hex(), 16)
@@ -416,22 +412,14 @@ def main():
         verifier.verify(msg_digest, rsresb)
     except ValueError:
         raise Exception('ECDSA sign (random) failed')
-    ins_sign_rand = inst_cnt
-    cyc_sign_rand = cycle_cnt
 
-    # ECDSA verify (deterministic)
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_ecdsa_verify_deterministic():
     init_dmem()
     res = run_verify(xexp, yexp, rexp, sexp, msg_digest_int)
     if not res:
         raise Exception('ECDSA verifiy (deterministic) failed')
-    ins_verify = inst_cnt
-    cyc_verify = cycle_cnt
 
-    # ECDSA verify (random)
-    inst_cnt = 0
-    cycle_cnt = 0
+def run_test_ecdsa_verify_random():
     init_dmem()
     randkey = ECC.generate(curve='P-256')
     randx = int(randkey.public_key().pointQ.x.to_bytes(32).hex(), 16)
@@ -443,29 +431,81 @@ def main():
     res = run_verify(randx, randy, r, s, msg_digest_int)
     if not res:
         raise Exception('ECDSA verifiy (rand) failed')
-    ins_verify_rand = inst_cnt
-    cyc_verify_rand = cycle_cnt
 
-    print('=== Instructions ===')
-    print('point test (deterministic): ' + str(ins_point_test))
-    print('point test (random): ' + str(ins_point_test_rnd))
-    print('scalar multiplication (deterministic): ' + str(ins_scalar_mult))
-    print('scalar multiplication (random): ' + str(ins_scalar_mult_rand))
-    print('ECDSA sign(deterministic): ' + str(ins_sign))
-    print('ECDSA sign(random): ' + str(ins_sign_rand))
-    print('ECDSA verify(deterministic): ' + str(ins_verify))
-    print('ECDSA verify(random): ' + str(ins_verify_rand))
+def run_test(name):
+    global inst_cnt
+    global cycle_cnt
+    global ctx
+    global stats
 
-    print('\n=== Cycles ===')
-    print('point test (deterministic): ' + str(cyc_point_test))
-    print('point test (random): ' + str(cyc_point_test_rnd))
-    print('scalar multiplication (deterministic): ' + str(cyc_scalar_mult))
-    print('scalar multiplication (random): ' + str(cyc_scalar_mult_rand))
-    print('ECDSA sign(deterministic): ' + str(cyc_sign))
-    print('ECDSA sign(random): ' + str(cyc_sign_rand))
-    print('ECDSA verify(deterministic): ' + str(cyc_verify))
-    print('ECDSA verify(random): ' + str(cyc_verify_rand))
+    test_results = {
+        'inst_cnt': 0,
+        'cycle_cnt': 0,
+        'stats': {},
+    }
+
+    # reset global counter variables
+    inst_cnt = 0
+    cycle_cnt = 0
+    stats = init_stats()
+
+    # run test
+    getattr(sys.modules[__name__], "run_test_" + name)()
+
+    # append test results
+    test_results['inst_cnt'] = inst_cnt
+    test_results['cycle_cnt'] = cycle_cnt
+    test_results['stats'] = stats
+
+    dump_stats(stats, STATS_CONFIG)
+    print("Total: %d instructions, taking %d cycles." % (inst_cnt, cycle_cnt))
+
+    return test_results
+
+def main():
+    global inst_cnt
+    global cycle_cnt
+    global ctx
+    global stats
+    """main"""
+    init_dmem()
+    load_program()
+
+    # curve point test (deterministic)
+    print_test_headline(1, 8, "curve point test (deterministic)")
+    run_test("curvepoint_deterministic")
+
+    # curve point test (random)
+    print_test_headline(2, 8, "curve point test (random)")
+    run_test("curvepoint_random")
+
+    # scalar multiplication (deterministic)
+    print_test_headline(3, 8, "scalar multiplication (deterministic)")
+    run_test("scalarmul_deterministic")
+
+    # scalar multiplication (random)
+    print_test_headline(4, 5, "scalar multiplication (random)")
+    run_test("scalarmul_random")
+
+    # ECDSA sign (deterministic)
+    print_test_headline(5, 8, "ECDSA sign (deterministic)")
+    run_test("ecdsa_sign_deterministic")
+
+    # ECDSA sign (random (random key, random k, deterministic message digest))
+    print_test_headline(6, 8, "ECDSA sign (random (random key, random k, deterministic message digest))")
+    run_test("ecdsa_sign_random")
+
+    # ECDSA verify (deterministic)
+    print_test_headline(7, 8, "ECDSA verify (deterministic)")
+    run_test("ecdsa_verify_deterministic")
+
+    # ECDSA verify (random)
+    print_test_headline(8, 8, "ECDSA verify (random)")
+    run_test("ecdsa_verify_random")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Cancelled by user request.")
