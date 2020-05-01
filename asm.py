@@ -10,6 +10,7 @@ def main():
     argparser = argparse.ArgumentParser(description='Bignum coprocessor instruction assembler')
     argparser.add_argument('infile', help="Input file")
     argparser.add_argument('-o', '--out-hex-file', help='Output hex file to store assembled binary instructions')
+    argparser.add_argument('--out-asm', help='Output reconstructed assembly instead of hex', action='store_true')
     argparser.add_argument('--nosummary', help="Do not print summary", action='store_true')
     argparser.parse_args()
     args = argparser.parse_args()
@@ -37,8 +38,11 @@ def main():
             outfile.writelines('\n' + '0x' + hex(item)[2:].zfill(8) for item in a.get_instruction_words()[1:])
         outfile.close()
     else:
-        for item in a.get_instruction_words():
-            print('0x' + hex(item)[2:].zfill(8))
+        for item in a.get_instruction_objects():
+            if args.out_asm:
+                print('0x' + hex(item.ins)[2:].zfill(8))
+            else:
+                print(item.get_asm_str())
 
 
 if __name__ == "__main__":
