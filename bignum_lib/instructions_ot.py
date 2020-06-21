@@ -357,6 +357,16 @@ def _get_two_regs_with_shift(asm_str):
     return rd, rs, shift_right, shift_bits
 
 
+def _get_two_gprs_with_inc(asm_str):
+    """decode standard format with two possibly incremented GPRs (e.g.: "x20, x21++")"""
+    substr = asm_str.split(',')
+    if len(substr) != 2:
+        raise SyntaxError('Syntax error in parameter set. Expected two GPR references')
+    xd, inc_xd = _get_single_inc_gpr(substr[0].strip())
+    xs, inc_xs = _get_single_inc_gpr(substr[1].strip())
+    return xd, inc_xd, xs, inc_xs
+
+
 def _get_three_regs_with_sections(asm_str):
     """decode a notation with three regs, with indicating a upper and lower section for the source regs
     this is used with the mul instruction (e.g.: "r24, r29l, r21u")"""
@@ -398,6 +408,23 @@ def _get_single_reg(asm_str):
     if not asm_str[1:].isdigit():
         raise SyntaxError('reg reference not a number')
     return int(asm_str[1:])
+
+
+def _get_single_inc_gpr(asm_str):
+    """returns a single GPR from string and checks inc indicator (e.g "x5" or "x5++")"""
+    inc = False
+    if len(asm_str.split()) > 1:
+        raise SyntaxError('Unexpected separator in reg reference')
+    if not asm_str.lower().startswith('x'):
+        raise SyntaxError('Missing \'x\' character at start of GPR reference')
+    if asm_str.lower().endswith('++'):
+        inc = True
+        reg = asm_str[1:-2]
+    else:
+        reg = asm_str[1:]
+    if not reg.isdigit():
+        raise SyntaxError('GPR reference not a number')
+    return int(reg), inc
 
 
 def _get_single_limb(asm_str):
@@ -765,6 +792,39 @@ class GInsBnMod(GInsBn):
     def enc(cls, addr, mnem, params, ctx):
         rd, rs1, rs2, = _get_three_regs(params)
         return cls(rd, rs1, rs2, ctx.ins_ctx)
+
+
+class GInsIndLsm(GIns):
+    """Standard Bignum format for indirect load, store, move: BN.<ins> x<GPR>[++], x<GPR>[++] """
+
+    def __init__(self, xd, inc_xd, xs, inc_xs, ctx):
+        self.xd = xd
+        self.inc_xd = inc_xd
+        self.xs = xs
+        self.inc_xs = inc_xs
+        if inc_xd and inc_xs:
+            raise SyntaxError("Only one increment allowed in indirect instructions")
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.xd)
+        if self.inc_xd:
+            asm_str += '++'
+        asm_str += ', x' + str(self.xs)
+        if self.inc_xs:
+            asm_str += '++'
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        xd, inc_xd, xs, inc_xs = _get_two_gprs_with_inc(params)
+        return cls(xd, inc_xd, xs, inc_xs, ctx.ins_ctx)
+
+    def exec_inc(self, m):
+        if self.inc_xd:
+            m.inc_gpr(self.xd)
+        if self.inc_xs:
+            m.inc_gpr(self.xs)
 
 
 #############################################
@@ -1256,6 +1316,23 @@ class IBnMov(GIns):
 
     def execute(self, m):
         m.set_reg(self.rd, m.get_reg(self.rs))
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnMovr(GInsIndLsm):
+    """Indirect move instruction"""
+
+    MNEM = 'BN.MOVR'
+
+    def __init__(self, xd, inc_xd, xs, inc_xs, ctx):
+        super().__init__(xd, inc_xd, xs, inc_xs, ctx)
+
+    def execute(self, m):
+        dst_wdr = m.get_gpr(self.xd)
+        src_wdr = m.get_gpr(self.xs)
+        m.set_reg(dst_wdr, m.get_reg(src_wdr))
+        super().exec_inc(m)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 

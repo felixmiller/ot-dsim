@@ -21,6 +21,9 @@ from . instructions_ot import IBnCmpb
 from . instructions_ot import IBnRshi
 from . instructions_ot import IBnSel
 from . instructions_ot import IBnMov
+from . instructions_ot import IBnMovr
+
+import logging
 
 
 def _get_imm(asm_str):
@@ -1778,6 +1781,12 @@ class IMovLdr(GIStd):
     def convert_otbn(self):
         if self.MNEM.get(self.fun) == 'mov':
             return IBnMov(self.rd, self.rs, self.ctx)
+        if self.MNEM.get(self.fun) == 'ldr':
+            xd = self.rd_limb
+            xs = self.rs_limb
+            logging.info("OTBN conversion: Mapping rfp limb " + str(self.rd_limb) + " on GPR x" + str(xd))
+            logging.info("OTBN conversion: Mapping rfp limb " + str(self.rs_limb) + " on GPR x" + str(xs))
+            return IBnMovr(xd, self.rd_inc, xs, self.rs_inc, self.ctx)
         return None
 
     def execute(self, m):
