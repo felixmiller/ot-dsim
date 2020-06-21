@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
+import logging
 from bignum_lib.sim_helpers import ins_objects_from_asm_file
 from bignum_lib.disassembler import Disassembler
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
     argparser = argparse.ArgumentParser(description='Dcrypto to OTBN assembly converter')
     argparser.add_argument('infile', help="Input Assembly file")
     argparser.parse_args()
