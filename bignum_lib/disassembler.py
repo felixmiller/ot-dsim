@@ -83,7 +83,7 @@ class Disassembler:
                 hexstr, asm_str, malformed, ins_object = self.__dis_instr(line)
                 if opt_print_bitmaps:
                     print(ins_object.get_enc_tab())
-                self.ins_objects.append((hexstr, asm_str, malformed, ins_object))
+                self.ins_objects.append(ins_object)
                 if malformed:
                     any_malformed = True
                     print('malformed instruction word: ' + hexstr)
@@ -96,8 +96,8 @@ class Disassembler:
                         opt_code=False, opt_defines=False):
         """create assembly from instruction objects"""
         for i, item in enumerate(self.ins_objects):
-            if isinstance(item[3], ILoop):
-                self.loopendstack.append(item[3].get_len() + i)
+            if isinstance(item, ILoop):
+                self.loopendstack.append(item.get_len() + i)
 
             if i in self.ctx.functions:
                 fun_len = 0
@@ -142,8 +142,8 @@ class Disassembler:
                 else:
                     asm += str(i).zfill(4) + ':  '
             if opt_code:
-                asm += '    ' + item[0] + ', /* '
-            asm += item[1]
+                asm += '    ' + item.get_asm_str()[0] + ', /* '
+            asm += item.get_asm_str()[1]
             if opt_code:
                 asm += ' */'
             self.asm_lines.append(asm)
@@ -163,4 +163,4 @@ class Disassembler:
         return self.asm_lines
 
     def get_instruction_objects(self):
-        return [item[3] for item in self.ins_objects]
+        return self.ins_objects
