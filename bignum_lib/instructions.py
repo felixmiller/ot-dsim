@@ -3,6 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from . machine import *
+from . instructions_ot import IBnAdd
+from . instructions_ot import IBnAddi
+from . instructions_ot import IBnAddc
+from . instructions_ot import IBnSub
+from . instructions_ot import IBnSubb
+from . instructions_ot import IBnSubi
+from . instructions_ot import IBnAnd
+from . instructions_ot import IBnOr
+from . instructions_ot import IBnXor
+from . instructions_ot import IBnNot
+from . instructions_ot import IBnAddm
+from . instructions_ot import IBnSubm
+from . instructions_ot import IBnMulh
+from . instructions_ot import IBnCmp
+from . instructions_ot import IBnCmpb
+from . instructions_ot import IBnRshi
+from . instructions_ot import IBnSel
 
 
 def _get_imm(asm_str):
@@ -357,11 +374,10 @@ class AsmCtx:
 
 class InstructionFactory(object):
 
-    # Mapping of mnemonics to instruction classes
-    mnem_map = {}
-    opcode_map = {}
-
     def __init__(self):
+        # Mapping of mnemonics to instruction classes
+        self.mnem_map = {}
+        self.opcode_map = {}
         self.__register_mnemonics(Ins)
         self.__register_opcodes(Ins)
 
@@ -543,6 +559,9 @@ class Ins(object):
 
     def get_cycles(self):
         return self.CYCLES
+
+    def convert_otbn(self):
+        return None
 
 
 class GIStd(Ins):
@@ -823,6 +842,25 @@ class IAdd(GIStdShift):
         else:
             return super().enc(addr, mnem, params, ctx)
 
+    def convert_otbn(self):
+        if self.shift_right:
+            shift_type = 'right'
+        else:
+            shift_type = 'left'
+        if self.MNEM.get(self.fun) == 'add':
+            return IBnAdd(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'addx':
+            return IBnAdd(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'addc':
+            return IBnAddc(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'addcx':
+            return IBnAddc(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'addi':
+            return IBnAddi(self.rd, self.rs1, self.imm, 'standard', self.ctx)
+        if self.MNEM.get(self.fun) == 'addix':
+            return IBnAddi(self.rd, self.rs1, self.imm, 'extension', self.ctx)
+        return None
+
     def execute(self, m):
         if self.MNEM.get(self.fun) != 'addi':
             if self.shift_right:
@@ -864,6 +902,9 @@ class IAddm(GIStdShift):
     SINGLE_INPUT = 0
 
     zero_ranges = []
+
+    def convert_otbn(self):
+        return IBnAddm(self.rd, self.rs1, self.rs2, self.ctx)
 
     def execute(self, m):
         if self.shift_right:
@@ -933,6 +974,25 @@ class ISub(GIStdShift):
         else:
             return super().enc(addr, mnem, params, ctx)
 
+    def convert_otbn(self):
+        if self.shift_right:
+            shift_type = 'right'
+        else:
+            shift_type = 'left'
+        if self.MNEM.get(self.fun) == 'sub':
+            return IBnSub(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'subx':
+            return IBnSub(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'subb':
+            return IBnSubb(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'subbx':
+            return IBnSubb(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+        if self.MNEM.get(self.fun) == 'subi':
+            return IBnSubi(self.rd, self.rs1, self.imm, 'standard', self.ctx)
+        if self.MNEM.get(self.fun) == 'subix':
+            return IBnSubi(self.rd, self.rs1, self.imm, 'extension', self.ctx)
+        return None
+
     def execute(self, m):
         if self.MNEM.get(self.fun) != 'subi':
             if self.shift_right:
@@ -980,6 +1040,9 @@ class ISubm(GIStdShift):
     SINGLE_INPUT = 0
 
     zero_ranges = [(7, 0)]  # disallow shifting for now
+
+    def convert_otbn(self):
+        return IBnSubm(self.rd, self.rs1, self.rs2, self.ctx)
 
     def execute(self, m):
         if self.shift_right:
@@ -1047,6 +1110,11 @@ class IMul128(GIStd):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
+    def convert_otbn(self):
+        rs1_hw_sel = 'upper' if self.r1_upper else'lower'
+        rs2_hw_sel = 'upper' if self.r2_upper else 'lower'
+        return IBnMulh(self.rd, self.rs1, rs1_hw_sel, self.rs2, rs2_hw_sel, self.ctx)
+
     def execute(self, m):
         op1 = (m.get_reg(self.rs1) >> int(m.XLEN/2)*int(self.r1_upper)) & m.half_xlen_mask
         op2 = (m.get_reg(self.rs2) >> int(m.XLEN/2)*int(self.r2_upper)) & m.half_xlen_mask
@@ -1068,6 +1136,13 @@ class IAnd(GIStdShift):
 
     zero_ranges = []
 
+    def convert_otbn(self):
+        if self.shift_right:
+            shift_type = 'right'
+        else:
+            shift_type = 'left'
+        return IBnAnd(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+
     def execute(self, m):
         if self.shift_right:
             rs2op = (m.get_reg(self.rs2) >> self.shift_bytes*8) & m.xlen_mask
@@ -1087,6 +1162,13 @@ class IOr(GIStdShift):
     SINGLE_INPUT = False
 
     zero_ranges = []
+
+    def convert_otbn(self):
+        if self.shift_right:
+            shift_type = 'right'
+        else:
+            shift_type = 'left'
+        return IBnOr(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
 
     def execute(self, m):
         if self.shift_right:
@@ -1120,6 +1202,13 @@ class INot(GIStdShift):
         enc_tab += 'D=0: left shift; D=1: right shift'
         return enc_tab
 
+    def convert_otbn(self):
+        if self.shift_right:
+            shift_type = 'right'
+        else:
+            shift_type = 'left'
+        return IBnNot(self.rd, self.rs2, shift_type, self.shift_bytes, self.ctx)
+
     def execute(self, m):
         if self.shift_right:
             rsop = (m.get_reg(self.rs2) >> self.shift_bytes*8) & m.xlen_mask
@@ -1139,6 +1228,13 @@ class IXor(GIStdShift):
     SINGLE_INPUT = False
 
     zero_ranges = []
+
+    def convert_otbn(self):
+        if self.shift_right:
+            shift_type = 'right'
+        else:
+            shift_type = 'left'
+        return IBnXor(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
 
     def execute(self, m):
         if self.shift_right:
@@ -1191,6 +1287,25 @@ class ISel(GIStd):
         ret += cls.enc_rs2(rs2)
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
+
+    def convert_otbn(self):
+        if self.MNEM.get((self.fun, self.imm)) == 'sell':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'l', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'selm':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'm', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'selc':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'c', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'selz':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'z', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'sellx':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'l', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'selmx':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'm', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'selcx':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'c', self.ctx)
+        if self.MNEM.get((self.fun, self.imm)) == 'selzx':
+            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'z', self.ctx)
+        return None
 
     def execute(self, m):
         if self.MNEM.get((self.fun, self.imm)) == 'sell':
@@ -1252,6 +1367,9 @@ class IRshi(GIStd):
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
 
+    def convert_otbn(self):
+        return IBnRshi(self.rd, self.rs1, self.rs2, self.imm, self.ctx)
+
     def execute(self, m):
         conc = (m.get_reg(self.rs2) << m.XLEN) + m.get_reg(self.rs1)
         res = (conc >> self.imm) & m.xlen_mask
@@ -1289,6 +1407,17 @@ class ICmp(GIStd):
         ret += cls.enc_op(cls.OP)
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
+
+    def convert_otbn(self):
+        if self.MNEM.get(self.fun) == 'cmp':
+            return IBnCmp(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)
+        if self.MNEM.get(self.fun) == 'cmpx':
+            return IBnCmp(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)
+        if self.MNEM.get(self.fun) == 'cmpb':
+            return IBnCmpb(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)
+        if self.MNEM.get(self.fun) == 'cmpbx':
+            return IBnCmpb(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)
+        return None
 
     def execute(self, m):
         if self.MNEM.get(self.fun) == 'cmp':
