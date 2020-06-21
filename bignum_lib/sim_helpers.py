@@ -40,7 +40,7 @@ def read_dmem_from_file(dmemfile):
 
 def ins_objects_from_hex_file(hex_file):
     lines = hex_file.readlines()
-    disassembler = Disassembler(lines)
+    disassembler = Disassembler.from_hex_file_lines(lines)
     return disassembler.get_instruction_objects(), disassembler.ctx
 
 
