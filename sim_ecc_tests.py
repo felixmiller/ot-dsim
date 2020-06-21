@@ -11,6 +11,7 @@ the p256 lib.
 from bignum_lib.machine import Machine
 from bignum_lib.sim_helpers import *
 from sim import ins_objects_from_hex_file
+from sim import ins_objects_from_asm_file
 from Crypto.Math.Numbers import Integer
 from Crypto.PublicKey import ECC
 from Crypto.Hash import SHA256
@@ -32,6 +33,7 @@ BN_LIMB_MASK = 2**BN_LIMB_LEN-1
 #BN_MAX_WORDS = 16  # Max number of bn words per val (for 4096 bit words)
 DMEM_DEPTH = 1024
 PROGRAM_HEX_FILE = 'hex/dcrypto_p256.hex'
+PROGRAM_ASM_FILE = 'asm/dcrypto_p256.asm'
 
 # pointers to dmem areas according to calling conventions of the p256 lib
 pLoc = 0  # Location of pointer in dmem
@@ -198,7 +200,7 @@ def load_d(d):
 
 
 # Program loading
-def load_program():
+def load_program_hex():
     global ins_objects
     global ctx
     """Load binary executable from file"""
@@ -206,11 +208,17 @@ def load_program():
     ins_objects, ctx = ins_objects_from_hex_file(insfile)
     insfile.close()
 
+def load_program_asm():
+    global ins_objects
+    global ctx
+    """Load binary executable from file"""
+    insfile = open(PROGRAM_ASM_FILE)
+    ins_objects, ctx = ins_objects_from_asm_file(insfile)
+    insfile.close()
 
 def dump_trace_str(trace_string):
     if ENABLE_TRACE_DUMP:
         print(trace_string)
-
 
 def run_isoncurve(x, y):
     """Runs the isoncurve primitive to check if a point is a valid curve point"""
@@ -462,6 +470,7 @@ def run_test(name):
 
     return test_results
 
+
 def main():
     global inst_cnt
     global cycle_cnt
@@ -469,7 +478,12 @@ def main():
     global stats
     """main"""
     init_dmem()
-    load_program()
+
+    inst_cnt = 0
+    cycle_cnt = 0
+
+    #load_program_hex()
+    load_program_asm()
 
     # curve point test (deterministic)
     print_test_headline(1, 8, "curve point test (deterministic)")
