@@ -312,6 +312,14 @@ def _get_three_regs_with_two_half_word_sels(asm_str):
     rs2, rs2_hw_sel = _get_single_reg_with_hw_sel(substr[2].strip())
     return rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel
 
+def _get_two_regs(asm_str):
+    """decode the BN format with rd and rs"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 2):
+        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
+    rd = _get_single_reg(substr[0].strip())
+    rs = _get_single_reg(substr[1].strip())
+    return rd, rs
 
 def _get_three_regs(asm_str):
     """decode the BN format with rd, rs1 and rs2 (e.g.: "r21, r5, r7")"""
@@ -1192,7 +1200,7 @@ class IBnRshi(GInsBn):
 
 
 class IBnSel(GInsBn):
-    """Concatenate and Right shift"""
+    """Select by flag"""
 
     MNEM = 'BN.SEL'
 
@@ -1219,6 +1227,35 @@ class IBnSel(GInsBn):
         flag_val = m.get_flag(flag_id)
         res = m.get_reg(self.rs1) if flag_val else m.get_reg(self.rs2)
         m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+#############################################
+#            Load/Store/Move                #
+#############################################
+
+class IBnMov(GIns):
+    """Not instruction with one shifted input"""
+
+    MNEM = 'BN.MOV'
+
+    def __init__(self, rd, rs, ctx):
+        self.rd = rd
+        self.rs = rs
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs = _get_two_regs(params)
+        return cls(rd, rs, ctx.ins_ctx)
+
+    def execute(self, m):
+        m.set_reg(self.rd, m.get_reg(self.rs))
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 

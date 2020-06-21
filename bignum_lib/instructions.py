@@ -20,6 +20,7 @@ from . instructions_ot import IBnCmp
 from . instructions_ot import IBnCmpb
 from . instructions_ot import IBnRshi
 from . instructions_ot import IBnSel
+from . instructions_ot import IBnMov
 
 
 def _get_imm(asm_str):
@@ -1773,6 +1774,11 @@ class IMovLdr(GIStd):
         ret += cls.enc_op(cls.OP)
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
+
+    def convert_otbn(self):
+        if self.MNEM.get(self.fun) == 'mov':
+            return IBnMov(self.rd, self.rs, self.ctx)
+        return None
 
     def execute(self, m):
         if self.MNEM.get(self.fun) == 'mov':
