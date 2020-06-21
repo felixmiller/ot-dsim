@@ -40,9 +40,9 @@ def main():
     else:
         for item in a.get_instruction_objects():
             if args.out_asm:
-                print('0x' + hex(item.ins)[2:].zfill(8))
-            else:
                 print(item.get_asm_str())
+            else:
+                print('0x' + hex(item.ins)[2:].zfill(8))
 
 
 if __name__ == "__main__":
