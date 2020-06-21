@@ -794,7 +794,7 @@ class GInsBnMod(GInsBn):
         return cls(rd, rs1, rs2, ctx.ins_ctx)
 
 
-class GInsIndLsm(GIns):
+class GInsIndReg(GIns):
     """Standard Bignum format for indirect load, store, move: BN.<ins> x<GPR>[++], x<GPR>[++] """
 
     def __init__(self, xd, inc_xd, xs, inc_xs, ctx):
@@ -1320,7 +1320,7 @@ class IBnMov(GIns):
         return trace_str, False
 
 
-class IBnMovr(GInsIndLsm):
+class IBnMovr(GInsIndReg):
     """Indirect move instruction"""
 
     MNEM = 'BN.MOVR'
