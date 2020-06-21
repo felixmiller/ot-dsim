@@ -27,6 +27,7 @@ BN_LIMB_MASK = 2**BN_LIMB_LEN-1
 BN_MAX_WORDS = 16  # Max number of bn words per val (for 4096 bit words)
 DMEM_DEPTH = 1024
 PROGRAM_HEX_FILE = 'hex/dcrypto_bn.hex'
+PROGRAM_ASM_FILE = 'asm/dcrypto_bn.asm'
 
 # pointers to dmem areas according to calling conventions for bignum lib
 DMEMP_IN = 38
@@ -173,12 +174,20 @@ def load_mod(mod):
 
 
 # Program loading
-def load_program():
+def load_program_hex():
     global ins_objects
     global ctx
     """Load binary executable from file"""
     insfile = open(PROGRAM_HEX_FILE)
     ins_objects, ctx = ins_objects_from_hex_file(insfile)
+    insfile.close()
+
+def load_program_asm():
+    global ins_objects
+    global ctx
+    """Load binary executable from file"""
+    insfile = open(PROGRAM_ASM_FILE)
+    ins_objects, ctx = ins_objects_from_asm_file(insfile)
     insfile.close()
 
 
@@ -400,7 +409,12 @@ def main():
     global stats
     global ctx
     init_dmem()
-    load_program()
+
+    # Run from asm file
+    load_program_asm()
+
+    # Run from hex file
+    #load_program_hex()
 
     msg_str = 'Hello bignum, can you encrypt and decrypt this for me?'
     msg = get_msg_val(msg_str)
