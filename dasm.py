@@ -66,7 +66,7 @@ def main():
                 print('Could not open file ' + args.labelfile)
                 exit()
 
-    dasm = Disassembler(ins_lines, label_lines, args.bitmaps)
+    dasm = Disassembler.from_hex_file_lines(ins_lines, label_lines, args.bitmaps)
     outlines = dasm.create_assembly(address, address_format, args.function_length, args.code, args.defines)
 
     if args.output_file:
