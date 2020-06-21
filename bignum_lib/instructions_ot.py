@@ -1236,7 +1236,7 @@ class IBnSel(GInsBn):
 #############################################
 
 class IBnMov(GIns):
-    """Not instruction with one shifted input"""
+    """Direct move instruction"""
 
     MNEM = 'BN.MOV'
 
