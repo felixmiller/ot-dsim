@@ -9,11 +9,9 @@ def _get_imm(asm_str):
     """return int for immediate string and check proper formatting (e.g "#42")"""
     if len(asm_str.split()) > 1:
         raise SyntaxError('Unexpected separator in immediate')
-    if not asm_str.startswith('#'):
-        raise SyntaxError('Missing \'#\' character at start of immediate')
-    if not asm_str[1:].isdigit():
+    if not asm_str.isdigit():
         raise SyntaxError('Immediate not a number')
-    return int(asm_str[1:])
+    return int(asm_str)
 
 
 def _get_limb(asm_str):
@@ -45,6 +43,23 @@ def _get_single_reg(asm_str):
     if not asm_str[1:].isdigit():
         raise SyntaxError('reg reference not a number')
     return int(asm_str[1:])
+
+
+def _get_single_reg_with_hw_sel(asm_str):
+    """returns a single register from string and check proper formatting (e.g "r5")"""
+    if len(asm_str.split()) > 1:
+        raise SyntaxError('Unexpected separator in reg reference')
+    if not asm_str.lower().startswith('r'):
+        raise SyntaxError('Missing \'r\' character at start of reg reference')
+    if not (asm_str.lower().endswith('u') or asm_str.lower().endswith('l')):
+        raise SyntaxError('Missing \'L\' or \'U\' at end of reg reference')
+    if not asm_str[1:-1].isdigit():
+        raise SyntaxError('reg reference not a number')
+    if asm_str[-1].lower() == 'u':
+        hw_sel = 'upper'
+    if asm_str[-1].lower() == 'l':
+        hw_sel = 'lower'
+    return int(asm_str[1:-1]), hw_sel
 
 
 def _get_single_limb(asm_str):
@@ -133,16 +148,38 @@ def _get_single_shifted_reg(asm_str):
 
     reg = _get_single_reg(substr[0].strip())
     if substr[1].strip().lower().endswith('b'):
-        shift_bytes = substr[1].strip()[:-1]
+        shift_bytes = int(substr[1].strip()[:-1])
         if not shift_bytes.isdigit():
             raise SyntaxError('input shift immediate not a number')
         shift_bits = int(shift_bytes)*8
     else:
-        shift_bits = substr[1].strip()
-        if not shift_bits.isdigit():
+        shift_bits_str = substr[1].strip()
+        if not shift_bits_str.isdigit():
             raise SyntaxError('input shift immediate not a number')
+        shift_bits = int(shift_bits_str)
 
     return reg, shift_type, shift_bits
+
+
+def _get_optional_flag_group_and_flag(asm_str):
+    """decode a flag with optional flag group (e.g FGX.L or just M)"""
+    substr = asm_str.split('.')
+    if len(substr) > 2:
+        raise SyntaxError('Malformed flag group and/or flag reference')
+    if len(substr) == 2:
+        if substr[0] == 'fgs':
+            flag_group = 'standard'
+        if substr[0] == 'fgx':
+            flag_group = 'extension'
+        else:
+            raise SyntaxError('Flag group must be either FGS for standard or FGX for extension')
+        flag = substr[1].lower()
+    else:
+        flag = asm_str.lower()
+        flag_group = 'standard'
+    if not (flag == 'c' or flag == 'm' or flag == 'l' or flag == 'z'):
+        raise SyntaxError('Illegal flag reference')
+    return flag_group, flag
 
 
 def _get_single_reg_with_section(asm_str):
@@ -243,6 +280,65 @@ def _get_three_regs_with_flag_group_and_shift(asm_str):
     return rd, rs1, rs2, shift_type, shift_bits, flag_group
 
 
+def _get_three_regs_with_flag_group_and_flag(asm_str):
+    """decode the full BN format with rd, rs1, optional flag group and flag"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 4):
+        raise SyntaxError('Syntax error in parameter set. Expected three reg references and flag')
+    rd = _get_single_reg(substr[0].strip())
+    rs1 = _get_single_reg(substr[1].strip())
+    rs2 = _get_single_reg(substr[2].strip())
+    flag_group, flag = _get_optional_flag_group_and_flag(substr[3].lower().strip())
+    return rd, rs1, rs2, flag_group, flag
+
+
+def _get_two_regs_with_shift(asm_str):
+    """decode the BN format with rd, rs and possibly shifted rs (e.g.: "r21, r7 >> 128")"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 2):
+        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
+    rd = _get_single_reg(substr[0].strip())
+    rs, shift_type, shift_bits = _get_single_shifted_reg(substr[1].strip())
+    return rd, rs, shift_type, shift_bits
+
+
+def _get_three_regs_with_two_half_word_sels(asm_str):
+    """decode the BN format for half word mul with rd, rs1 and rs2 and half word selectors for the source regs"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 3 or len(substr) == 4):
+        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
+    rd = _get_single_reg(substr[0].strip())
+    rs1, rs1_hw_sel = _get_single_reg_with_hw_sel(substr[1].strip())
+    rs2, rs2_hw_sel = _get_single_reg_with_hw_sel(substr[2].strip())
+    return rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel
+
+
+def _get_three_regs(asm_str):
+    """decode the BN format with rd, rs1 and rs2 (e.g.: "r21, r5, r7")"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 3):
+        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
+    rd = _get_single_reg(substr[0].strip())
+    rs1 = _get_single_reg(substr[1].strip())
+    rs2 = _get_single_reg(substr[2].strip())
+    return rd, rs1, rs2
+
+
+def _get_two_regs_and_imm_with_flag_group(asm_str):
+    """decode the BN immediate standard format with rd, rs and optional flag group"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 3 or len(substr) == 4):
+        raise SyntaxError('Syntax error in parameter set. Expected two reg references + '
+                          'immediate and optional flag group')
+    rd = _get_single_reg(substr[0].strip())
+    rs = _get_single_reg(substr[1].strip())
+    imm = _get_imm(substr[2].strip())
+    flag_group = 'standard'
+    if len(substr) == 4:
+        flag_group = _get_flag_group(substr[3].strip())
+    return rd, rs, imm, flag_group
+
+
 def _get_two_regs_with_shift(asm_str):
     """decode standard format with possibly shifted rs but only a single source register (e.g.: "r21, r7 >> 128")"""
     substr = asm_str.split(',')
@@ -263,17 +359,6 @@ def _get_three_regs_with_sections(asm_str):
     rs1, rs1_upper = _get_single_reg_with_section(substr[1].strip())
     rs2, rs2_upper = _get_single_reg_with_section(substr[2].strip())
     return rd, rs1, rs1_upper, rs2, rs2_upper
-
-
-def _get_imm(asm_str):
-    """return int for immediate string and check proper formatting (e.g "#42")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in immediate')
-    if not asm_str.startswith('#'):
-        raise SyntaxError('Missing \'#\' character at start of immediate')
-    if not asm_str[1:].isdigit():
-        raise SyntaxError('Immediate not a number')
-    return int(asm_str[1:])
 
 
 def _get_limb(asm_str):
@@ -485,11 +570,10 @@ def _get_three_regs_with_sections(asm_str):
 
 class InstructionFactory(object):
 
-    # Mapping of mnemonics to instruction classes
-    mnem_map = {}
-    opcode_map = {}
-
     def __init__(self):
+        # Mapping of mnemonics to instruction classes
+        self.mnem_map = {}
+        self.opcode_map = {}
         self.__register_mnemonics(GIns)
 
     def __register_mnemonics(self, class_p):
@@ -554,8 +638,12 @@ class InstructionFactory(object):
 class GIns(object):
     """Generic instruction """
 
+    CYCLES = 1
+
     def __init__(self, ctx):
         self.ctx = ctx
+        self.malformed = False
+        self.hex_str = 0
 
     @classmethod
     def from_assembly(cls, address, mnem, params, ctx):
@@ -571,7 +659,7 @@ class GIns(object):
 
 
 class GInsBn(GIns):
-    """Standard Bignum format BN.<ins> <rd>, <rs1>, <rs2>, FG<flag_group> [, <shift_type> <shift_bytes>B]"""
+    """Standard Bignum format BN.<ins> <rd>, <rs1>, <rs2>, FG<flag_group> """
 
     def __init__(self, rd, rs1, rs2, flag_group, ctx):
         self.rd = rd
@@ -579,6 +667,24 @@ class GInsBn(GIns):
         self.rs2 = rs2
         self.flag_group = flag_group
         super().__init__(ctx)
+
+    def exec_set_all_flags(self, res, m):
+        if self.flag_group == 'standard':
+            m.set_c_z_m_l(res)
+        else:
+            m.setx_c_z_m_l(res)
+
+    def exec_set_zml_flags(self, res, m):
+        if self.flag_group == 'standard':
+            m.set_z_m_l(res)
+        else:
+            m.setx_z_m_l(res)
+
+    def exec_get_carry(self, m):
+        if self.flag_group == 'standard':
+            return m.get_flag('C')
+        else:
+            return m.get_flag('XC')
 
 
 class GInsBnShift(GInsBn):
@@ -599,7 +705,7 @@ class GInsBnShift(GInsBn):
                 asm_str += ' << ' + str(self.shift_bytes*8)
         if self.flag_group == 'extension':
             asm_str += ', FGX'
-        return asm_str
+        return self.hex_str, asm_str, self.malformed
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
@@ -607,6 +713,50 @@ class GInsBnShift(GInsBn):
         if shift_bits % 8:
             raise SyntaxError('Input shift immediate not byte aligned')
         return cls(rd, rs1, rs2, flag_group, shift_type, int(shift_bits/8), ctx.ins_ctx)
+
+    def exec_shift(self, m):
+        if self.shift_type == 'right':
+            rs2op = (m.get_reg(self.rs2) >> self.shift_bytes*8) & m.xlen_mask
+        else:
+            rs2op = (m.get_reg(self.rs2) << self.shift_bytes*8) & m.xlen_mask
+        return rs2op
+
+
+class GInsBnImm(GInsBn):
+    """Standard Bignum format with one source register and immediate
+    BN.<ins> <rd>, <rs>, <imm>, [ FG<flag_group>]"""
+
+    def __init__(self, rd, rs, imm, flag_group, ctx):
+        self.imm = imm
+        super().__init__(rd, rs, None, flag_group, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', ' + str(self.imm)
+        if self.flag_group == 'extension':
+            asm_str += ', FGX'
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs, imm, flag_group = _get_two_regs_and_imm_with_flag_group(params)
+        return cls(rd, rs, imm, flag_group, ctx.ins_ctx)
+
+
+class GInsBnMod(GInsBn):
+    """Standard Bignum format for pseudo modulo operations
+    BN.<ins> <rd>, <rs1>, <rs2>"""
+
+    def __init__(self, rd, rs1, rs2, ctx):
+        super().__init__(rd, rs1, rs2, None, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs1, rs2, = _get_three_regs(params)
+        return cls(rd, rs1, rs2, ctx.ins_ctx)
 
 
 #############################################
@@ -629,17 +779,446 @@ class IBnAdd(GInsBnShift):
         return super().enc(addr, mnem, params, ctx)
 
     def execute(self, m):
-        if self.shift_type == 'right':
-            rs2op = (m.get_reg(self.rs2) >> self.shift_bytes*8) & m.xlen_mask
-        else:
-            rs2op = (m.get_reg(self.rs2) << self.shift_bytes*8) & m.xlen_mask
+        global debug_cnt
+        rs2op = self.exec_shift(m)
         res = m.get_reg(self.rs1) + rs2op
-        m.stat_record_flag_access('n', self.MNEM.get(self.fun))
-        if self.flag_group == 'standard':
-            m.set_c_z_m_l(res)
-        else:
-            m.setx_c_z_m_l(res)
+        self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnSub(GInsBnShift):
+    """Sub instruction with one shifted input"""
+
+    MNEM = 'BN.SUB'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) - rs2op)
+        self.exec_set_all_flags(res, m)
+        m.set_reg(self.rd, res  & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnCmp(GInsBnShift):
+    """Cmp instruction with one shifted input"""
+
+    MNEM = 'BN.CMP'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) - rs2op)
+        self.exec_set_all_flags(res, m)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnAddc(GInsBnShift):
+    """Add with carry instruction with one shifted input"""
+
+    MNEM = 'BN.ADDC'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) + rs2op + int(self.exec_get_carry(m)))
+        self.exec_set_all_flags(res, m)
+        m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnSubb(GInsBnShift):
+    """Sub with borrow instruction with one shifted input"""
+
+    MNEM = 'BN.SUBB'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) - rs2op - int(self.exec_get_carry(m)))
+        self.exec_set_all_flags(res, m)
+        m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnCmpb(GInsBnShift):
+    """Cmp with borrow instruction with one shifted input"""
+
+    MNEM = 'BN.CMPB'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) - rs2op - int(self.exec_get_carry(m)))
+        self.exec_set_all_flags(res, m)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnAddi(GInsBnImm):
+    """Add with immediate"""
+
+    MNEM = 'BN.ADDI'
+
+    def __init__(self, rd, rs, imm, flag_group, ctx):
+        super().__init__(rd, rs, imm, flag_group, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        res = (m.get_reg(self.rs1) + self.imm)
+        self.exec_set_all_flags(res, m)
+        m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnSubi(GInsBnImm):
+    """Sub with immediate"""
+
+    MNEM = 'BN.SUBI'
+
+    def __init__(self, rd, rs, imm, flag_group, ctx):
+        super().__init__(rd, rs, imm, flag_group, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        res = (m.get_reg(self.rs1) - self.imm)
+        self.exec_set_all_flags(res, m)
+        m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnAddm(GInsBnMod):
+    """Pseudo modular add"""
+
+    MNEM = 'BN.ADDM'
+
+    def __init__(self, rd, rs1, rs2, ctx):
+        super().__init__(rd, rs1, rs2, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        res = (m.get_reg(self.rs1) + m.get_reg(self.rs2))
+        if res >= m.get_reg('mod'):
+            res = res - m.get_reg('mod')
+        m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnSubm(GInsBnMod):
+    """Pseudo modular sub"""
+
+    MNEM = 'BN.SUBM'
+
+    def __init__(self, rd, rs1, rs2, ctx):
+        super().__init__(rd, rs1, rs2, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        res = m.get_reg(self.rs1) - m.get_reg(self.rs2)
+        if res < 0:
+            res = m.get_reg('mod') + res
+        m.set_reg(self.rd, res & m.xlen_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnMulh(GInsBn):
+    """Half Word Multiply
+    BN.MULH <rd>, <rs1>[L|U], <rs2>[L|U]"""
+
+    MNEM = 'BN.MULH'
+
+    def __init__(self, rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel, ctx):
+        self.rs1_hw_sel = rs1_hw_sel
+        self.rs2_hw_sel = rs2_hw_sel
+        super().__init__(rd, rs1, rs2, None, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1)
+        if self.rs1_hw_sel == 'upper':
+            asm_str += 'U'
+        else:
+            asm_str += 'L'
+        asm_str += ', r' + str(self.rs2)
+        if self.rs2_hw_sel == 'upper':
+            asm_str += 'U'
+        else:
+            asm_str += 'L'
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel = _get_three_regs_with_two_half_word_sels(params)
+        return cls(rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel, ctx.ins_ctx)
+
+    def execute(self, m):
+        if self.rs1_hw_sel == 'upper':
+            op1 = (m.get_reg(self.rs1) >> int(m.XLEN/2)) & m.half_xlen_mask
+        else:
+            op1 = m.get_reg(self.rs1) & m.half_xlen_mask
+        if self.rs2_hw_sel == 'upper':
+            op2 = (m.get_reg(self.rs2) >> int(m.XLEN/2)) & m.half_xlen_mask
+        else:
+            op2 = m.get_reg(self.rs2) & m.half_xlen_mask
+        res = op1*op2
+        m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+#############################################
+#      Logical, select, shift, compare      #
+#############################################
+
+
+class IBnAnd(GInsBnShift):
+    """And instruction with one shifted input"""
+
+    MNEM = 'BN.AND'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, 'standard', shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) & rs2op) & m.xlen_mask
+        m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnOr(GInsBnShift):
+    """Or instruction with one shifted input"""
+
+    MNEM = 'BN.OR'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, 'standard', shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) | rs2op) & m.xlen_mask
+        self.exec_set_zml_flags(res, m)
+        m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnXor(GInsBnShift):
+    """Or instruction with one shifted input"""
+
+    MNEM = 'BN.XOR'
+
+    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rd, rs1, rs2, 'standard', shift_type, shift_bytes, ctx)
+
+    def get_asm_str(self):
+        return super().get_asm_str()
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return super().enc(addr, mnem, params, ctx)
+
+    def execute(self, m):
+        rs2op = self.exec_shift(m)
+        res = (m.get_reg(self.rs1) ^ rs2op) & m.xlen_mask
+        self.exec_set_zml_flags(res, m)
+        m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+
+class IBnNot(GIns):
+    """Not instruction with one shifted input"""
+
+    MNEM = 'BN.NOT'
+
+    def __init__(self, rd, rs, shift_type, shift_bytes, ctx):
+        self.rd = rd
+        self.rs = rs
+        self.shift_type = shift_type
+        self.shift_bytes = shift_bytes
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs)
+        if self.shift_type == 'right':
+            asm_str += ' >> ' + str(self.shift_bytes*8)
+        else:
+            if self.shift_bytes:
+                asm_str += ' << ' + str(self.shift_bytes*8)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs, shift_type, shift_bits = _get_two_regs_with_shift(params)
+        if shift_bits % 8:
+            raise SyntaxError('Input shift immediate not byte aligned')
+        return cls(rd, rs, shift_type, int(shift_bits / 8), ctx.ins_ctx)
+
+    def execute(self, m):
+        if self.shift_type == 'right':
+            rs2op = (m.get_reg(self.rs) >> self.shift_bytes*8) & m.xlen_mask
+        else:
+            rs2op = (m.get_reg(self.rs) << self.shift_bytes*8) & m.xlen_mask
+        res = (~rs2op) & m.xlen_mask
+        m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnRshi(GInsBn):
+    """Concatenate and Right shift"""
+
+    MNEM = 'BN.RSHI'
+
+    def __init__(self, rd, rs1, rs2, shift_bits, ctx):
+        self.shift_bits = shift_bits
+        super().__init__(rd, rs1, rs2, None, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2)
+        asm_str += ' >> ' + str(self.shift_bits)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs1, rs2, shift_type, shift_bits, flag_group = _get_three_regs_with_flag_group_and_shift(params)
+        if shift_type != 'right':
+            raise SyntaxError('Only right shift possible with this instruction')
+        if flag_group != 'standard':
+            raise SyntaxError('Only standard flag group possible with this instruction')
+        return cls(rd, rs1, rs2, shift_bits, ctx.ins_ctx)
+
+    def execute(self, m):
+        conc = (m.get_reg(self.rs2) << m.XLEN) + m.get_reg(self.rs1)
+        res = (conc >> self.shift_bits) & m.xlen_mask
+        m.set_reg(self.rd, res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnSel(GInsBn):
+    """Concatenate and Right shift"""
+
+    MNEM = 'BN.SEL'
+
+    def __init__(self, rd, rs1, rs2, flag_group, flag, ctx):
+        self.flag = flag
+        super().__init__(rd, rs1, rs2, flag_group, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2) + ', '
+        if self.flag_group == 'extension':
+            asm_str += 'FGX.'
+        asm_str += self.flag.upper()
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rd, rs1, rs2, flag_group, flag = _get_three_regs_with_flag_group_and_flag(params)
+        return cls(rd, rs1, rs2, flag_group, flag, ctx.ins_ctx)
+
+    def execute(self, m):
+        flag_id = self.flag.upper()
+        if self.flag_group == 'extension':
+            flag_id = 'X' + flag_id
+        flag_val = m.get_flag(flag_id)
+        res = m.get_reg(self.rs1) if flag_val else m.get_reg(self.rs2)
+        m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 
