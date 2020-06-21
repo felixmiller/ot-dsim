@@ -12,15 +12,10 @@ class Assembler:
     TOK_LOOP = 'loop'
     TOK_SPECIAL = [')', '}']
 
-    # List of addresses where functions are closed
-    funclose = []
-
-    # the program (mnem, (param_string, line))
-    instr = []
-
-    ins_objects = []
-
     def __init__(self, lines):
+        self.funclose =  [] # List of addresses where functions are closed
+        self.instr = [] # the program (mnem, (param_string, line))
+        self.ins_objects = []
         self.ins_fac = InstructionFactory()
         self.ins_fac_ot = InstructionFactoryOt()
         self.lines = lines
