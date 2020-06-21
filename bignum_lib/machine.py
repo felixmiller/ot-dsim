@@ -12,6 +12,7 @@ class CallStackUnderrun(OverflowError):
 
 class Machine(object):
     NUM_REGS = 32
+    NUM_GPRS = 32
     XLEN = 256
     LIMBS = 8
     DMEM_DEPTH = 128
@@ -148,6 +149,9 @@ class Machine(object):
         self.r = []
         for i in range(self.NUM_REGS):
             self.r.append(0)
+        self.gpr = []
+        for i in range(self.NUM_GPRS):
+            self.gpr.append(0)
 
     def __check_reg_idx(self, idx):
         """Check if register index is within bound"""
@@ -284,6 +288,39 @@ class Machine(object):
     def set_reg_half_limb(self, ridx, lidx, value, upper):
         """Set a single half limb of a register"""
         self.set_reg(ridx, self.__mod_half_limb_in_reg_val(lidx, self.get_reg(ridx), value, upper))
+
+    def set_gpr(self, gpr, value):
+        """Set a GPR value"""
+        if not (32 > gpr >= 0):
+            raise Exception('Invalid GPR referenced')
+        if not (0 <= gpr < 2**self.limb_width):
+            raise Exception('GPR value out of bounds')
+        self.gpr[gpr] = value
+        """For now GPRs are mapped onto special wide registers rfp, dmp, lc"""
+        if gpr < 8:
+            self.set_reg_limb('rfp', gpr, value)
+        if 8 <= gpr < 16:
+            self.set_reg_limb('dmp', gpr-8, value)
+        if 16 <= gpr < 24:
+            self.set_reg_limb('lc', gpr-16, value)
+
+    def get_gpr(self, gpr):
+        """Get a GPR value"""
+        if not (32 > gpr >= 0):
+            raise Exception('Invalid GPR referenced: ' + str(gpr))
+        """For now GPRs are mapped onto special wide registers rfp, dmp, lc"""
+        if gpr < 8:
+            return self.get_reg_limb('rfp', gpr)
+        if 8 <= gpr < 16:
+            return self.get_reg_limb('dmp', gpr-8)
+        if 16 <= gpr < 24:
+            return self.get_reg_limb('lc', gpr-16)
+
+    def inc_gpr(self, gpr):
+        """Increment a GPR value"""
+        if not (32 > gpr >= 0):
+            raise Exception('Invalid GPR referenced')
+        self.set_gpr(gpr, (self.get_gpr(gpr) + 1) & self.limb_mask)
 
     def set_pc(self, pc):
         """Set the program counter"""
