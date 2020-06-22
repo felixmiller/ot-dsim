@@ -22,6 +22,8 @@ from . instructions_ot import IBnRshi
 from . instructions_ot import IBnSel
 from . instructions_ot import IBnMov
 from . instructions_ot import IBnMovr
+from . instructions_ot import IBnLid
+from . instructions_ot import IBnSid
 
 import logging
 
@@ -1920,6 +1922,18 @@ class ISt(GIStd):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
+    def convert_otbn(self):
+        # conversion of dual increment not yet supported
+        if self.inc_src and self.inc_dst:
+            logging.warning("Conversion of dual increment st instruction not supported. Leaving unchanged")
+            return None
+        xd = self.limb_dst + 8  # dmp currently mapped on x8 to x16
+        xs = self.limb_src
+        offset = 0
+        logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xd))
+        logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xs))
+        return IBnSid(xs, self.inc_src, xd, self.inc_dst, offset, self.ctx)
+
     def execute(self, m):
         sptr = m.get_reg_limb('rfp', self.limb_src) & m.reg_idx_mask
         dptr = m.get_reg_limb('dmp', self.limb_dst) & m.dmem_idx_mask
@@ -1998,6 +2012,20 @@ class ILd(GIStd):
             raise Exception('Internal error: Invalid mnemonic')
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
+
+    def convert_otbn(self):
+        if self.MNEM.get(self.dmem_src) == 'ld':
+            # conversion of dual increment not yet supported
+            if self.inc_src and self.inc_dst:
+                logging.warning("Conversion of dual increment ld instruction not supported. Leaving unchanged")
+                return None
+            xd = self.limb_dst
+            xs = self.limb_src + 8  # dmp currently mapped on x8 to x16
+            offset = 0
+            logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xd))
+            logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xs))
+            return IBnLid(xd, self.inc_dst, xs, self.inc_src, offset, self.ctx)
+        return None
 
     def execute(self, m):
         sptr = m.get_reg_limb('dmp', self.limb_src) & m.dmem_idx_mask

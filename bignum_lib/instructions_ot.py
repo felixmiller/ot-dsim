@@ -367,6 +367,16 @@ def _get_two_gprs_with_inc(asm_str):
     return xd, inc_xd, xs, inc_xs
 
 
+def _get_two_gprs_with_inc_and_offset(asm_str):
+    """decode standard format with two possibly incremented GPRs and offset (e.g.: "x20, 128(x21++)"""
+    substr = asm_str.split(',')
+    if len(substr) != 2:
+        raise SyntaxError('Syntax error in parameter set. Expected two GPR references')
+    x1, inc_x1 = _get_single_inc_gpr(substr[0].strip())
+    x2, inc_x2, offset = _get_single_inc_gpr_with_offset(substr[1].strip())
+    return x1, inc_x1, x2, inc_x2, offset
+
+
 def _get_three_regs_with_sections(asm_str):
     """decode a notation with three regs, with indicating a upper and lower section for the source regs
     this is used with the mul instruction (e.g.: "r24, r29l, r21u")"""
@@ -425,6 +435,23 @@ def _get_single_inc_gpr(asm_str):
     if not reg.isdigit():
         raise SyntaxError('GPR reference not a number')
     return int(reg), inc
+
+
+def _get_single_inc_gpr_with_offset(asm_str):
+    """returns a single GPR with offset from string and checks inc indicator (e.g "128(x5)" or "128(x5++)")"""
+    inc = False
+    if len(asm_str.split()) > 1:
+        raise SyntaxError('Unexpected separator in reg reference')
+    if not asm_str.lower().endswith(')'):
+        raise SyntaxError('Missing \')\'  at end of GPR with offset reference')
+    substr = asm_str.split('(')
+    if not len(substr) == 2:
+        raise SyntaxError('Malformed GPR reference with offset')
+    if not substr[0].isdigit():
+        raise SyntaxError('Offset reference not a number')
+    offset = int(substr[0])
+    gpr, inc_gpr = _get_single_inc_gpr(substr[1][:-1].strip().lower())
+    return gpr, inc_gpr, offset
 
 
 def _get_single_limb(asm_str):
@@ -795,7 +822,7 @@ class GInsBnMod(GInsBn):
 
 
 class GInsIndReg(GIns):
-    """Standard Bignum format for indirect load, store, move: BN.<ins> x<GPR>[++], x<GPR>[++] """
+    """Standard Bignum format for indirect move: BN.<ins> x<GPR>[++], x<GPR>[++] """
 
     def __init__(self, xd, inc_xd, xs, inc_xs, ctx):
         self.xd = xd
@@ -825,6 +852,41 @@ class GInsIndReg(GIns):
             m.inc_gpr(self.xd)
         if self.inc_xs:
             m.inc_gpr(self.xs)
+
+
+class GInsIndLs(GIns):
+    """Standard Bignum format for indirect load, store : BN.<ins> <gpr>[<inc>], <offset>(<gpr>[<gpr_inc>]) """
+
+    def __init__(self, x1, inc_x1, x2, inc_x2, offset, ctx):
+        self.x1 = x1
+        self.inc_x1 = inc_x1
+        self.x2 = x2
+        self.inc_x2 = inc_x2
+        self.offset = offset
+        if inc_x1 and inc_x2:
+            raise SyntaxError("Only one increment allowed in indirect instructions")
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.x1)
+        if self.inc_x1:
+            asm_str += '++'
+        asm_str += ', ' + str(self.offset) + '(x' + str(self.x2)
+        if self.inc_x2:
+            asm_str += '++'
+        asm_str += ')'
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        x1, inc_x1, x2, inc_x2, offset = _get_two_gprs_with_inc_and_offset(params)
+        return cls(x1, inc_x1, x2, inc_x2, offset, ctx.ins_ctx)
+
+    def exec_inc(self, m):
+        if self.inc_x1:
+            m.inc_gpr(self.x1)
+        if self.inc_x2:
+            m.inc_gpr(self.x2)
 
 
 #############################################
@@ -1332,6 +1394,40 @@ class IBnMovr(GInsIndReg):
         dst_wdr = m.get_gpr(self.xd)
         src_wdr = m.get_gpr(self.xs)
         m.set_reg(dst_wdr, m.get_reg(src_wdr))
+        super().exec_inc(m)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnLid(GInsIndLs):
+    """Indirect load instruction"""
+
+    MNEM = 'BN.LID'
+
+    def __init__(self, x1, inc_x1, x2, inc_x2, offset, ctx):
+        super().__init__(x1, inc_x1, x2, inc_x2, offset, ctx)
+
+    def execute(self, m):
+        dst_wdr = m.get_gpr(self.x1)
+        dmem_addr = self.offset + (m.get_gpr(self.x2))
+        m.set_reg(dst_wdr, m.get_dmem(dmem_addr))
+        super().exec_inc(m)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IBnSid(GInsIndLs):
+    """Indirect store instruction"""
+
+    MNEM = 'BN.SID'
+
+    def __init__(self, x1, inc_x1, x2, inc_x2, offset, ctx):
+        super().__init__(x1, inc_x1, x2, inc_x2, offset, ctx)
+
+    def execute(self, m):
+        src_wdr = m.get_gpr(self.x1)
+        dmem_addr = self.offset + (m.get_gpr(self.x2))
+        m.set_dmem(dmem_addr, m.get_reg(src_wdr))
         super().exec_inc(m)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
