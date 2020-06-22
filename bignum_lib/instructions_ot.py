@@ -13,32 +13,12 @@ NUM_GPRS = Machine.NUM_GPRS
 #############################################
 
 def _get_imm(asm_str):
-    """return int for immediate string and check proper formatting (e.g "#42")"""
+    """return int for immediate string and check proper formatting"""
     if len(asm_str.split()) > 1:
         raise SyntaxError('Unexpected separator in immediate')
     if not asm_str.isdigit():
         raise SyntaxError('Immediate not a number')
     return int(asm_str)
-
-
-def _get_limb(asm_str):
-    """returns limb for immediate string and check proper formatting (e.g."*5")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in limb reference')
-    if not asm_str.startswith('*'):
-        raise SyntaxError('Missing \'*\' character at start of limb reference')
-    if not asm_str[1:].isdigit():
-        raise SyntaxError('limb reference not a number')
-    return int(asm_str[1:])
-
-
-def _get_index_imm(asm_str):
-    """returns the index from an immediate index notation (e.g "[42]")"""
-    if not asm_str.startswith('['):
-        raise SyntaxError('Missing \'[\' character at start of index notation')
-    if not asm_str.endswith(']'):
-        raise SyntaxError('Missing \']\' character at end of index notation')
-    return _get_imm(asm_str[1:-1].strip())
 
 
 def _get_single_reg(asm_str):
@@ -84,58 +64,6 @@ def _get_single_limb(asm_str):
     if not limb.isdigit():
         raise SyntaxError('limb reference not a number')
     return int(limb), inc
-
-
-def _get_single_reg_and_index_imm(asm_str):
-    """decode a single reg and an immediate index (e.g. "r15, [#7]")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected register and indexed immediate')
-    reg = _get_single_reg(substr[0].strip())
-    idx = _get_index_imm(substr[1].strip())
-    return reg, idx
-
-
-def _get_double_limb(asm_str):
-    """decode a double limb notation (e.g. "*6++, *8")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected two limb references')
-    limbl, incl = _get_single_limb(substr[0].strip())
-    limbr, incr = _get_single_limb(substr[1].strip())
-    return limbl, incl, limbr, incr
-
-
-def _get_double_reg(asm_str):
-    """decode a double reg notation without shift (e.g. "r1, r2")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    regl = _get_single_reg(substr[0].strip())
-    regr = _get_single_reg(substr[1].strip())
-    return regl, regr
-
-
-def _get_double_reg_with_imm(asm_str):
-    """decode a double reg with immediate (e.g. "r3, r5, #254")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references and immediate')
-    rd = _get_single_reg(substr[0].strip())
-    rs = _get_single_reg(substr[1].strip())
-    imm = _get_imm(substr[2].strip())
-    return rd, rs, imm
-
-
-def _get_triple_reg(asm_str):
-    """decode a triple reg notation without shift (e.g. "r1, r2, r3")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1 = _get_single_reg(substr[1].strip())
-    rs2 = _get_single_reg(substr[2].strip())
-    return rd, rs1, rs2
 
 
 def _get_single_shifted_reg(asm_str):
@@ -202,67 +130,6 @@ def _get_single_reg_with_section(asm_str):
     return reg, upper
 
 
-def _get_limb_section(asm_str):
-    """decode the limb and the section (h or l) from limb (e.g "4l")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in limb reference')
-    if asm_str.lower().endswith('l'):
-        s = 0
-    elif asm_str.lower().endswith('h'):
-        s = 1
-    else:
-        raise SyntaxError('Expecting \'l\' or \'h\' at the end of limb section reference')
-    limb = asm_str[:-1]
-    if not limb.isdigit():
-        raise SyntaxError('reg reference not a number')
-    return int(limb), s
-
-
-def _get_reg_with_limb(asm_str):
-    """decode reference to 16 bit section of a register's limb (e.g "r15.3l")"""
-    substr = asm_str.split('.')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected reference to 16 bit '
-                          'section of limb (e.g. \"r12.3l\")')
-    reg = _get_single_reg(substr[0].strip())
-    limb, s = _get_limb_section(substr[1].strip())
-    return reg, limb, s
-
-
-def _get_reg_limb_and_imm(asm_str):
-    """decode the movi notation (reg+limb reference + immediate, e.g.: "r15.3l, #42" )"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected reg with limb + immediate')
-    reg, limb, s = _get_reg_with_limb(substr[0].strip())
-    imm = _get_imm(substr[1].strip())
-    return reg, limb, s, imm
-
-
-def _get_limb_with_paren(asm_str):
-    """decode limb from a notation with parentheses as it is used in loop instructions (e.g "*0 (")"""
-    if not asm_str.endswith('('):
-        raise SyntaxError('Expecting \'(\'')
-    return _get_limb(asm_str[:-1].strip())
-
-
-def _get_imm_with_paren(asm_str):
-    """decode immediate from a notation with parentheses as it is used in loop instructions (e.g "#4 (")"""
-    if not asm_str.endswith('('):
-        raise SyntaxError('Expecting \'(\'')
-    return _get_imm(asm_str[:-1].strip())
-
-
-def _get_loop_type_direct(asm_str):
-    """decode loop type"""
-    if asm_str.startswith('*'):
-        return False
-    elif asm_str.startswith('#'):
-        return True
-    else:
-        raise SyntaxError('Syntax error in loop notation')
-
-
 def _get_flag_group(asm_str):
     substr = asm_str.strip().lower()
     if substr == 'fgd':
@@ -320,6 +187,7 @@ def _get_three_regs_with_two_half_word_sels(asm_str):
     rs2, rs2_hw_sel = _get_single_reg_with_hw_sel(substr[2].strip())
     return rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel
 
+
 def _get_two_regs(asm_str):
     """decode the BN format with rd and rs"""
     substr = asm_str.split(',')
@@ -328,6 +196,7 @@ def _get_two_regs(asm_str):
     rd = _get_single_reg(substr[0].strip())
     rs = _get_single_reg(substr[1].strip())
     return rd, rs
+
 
 def _get_three_regs(asm_str):
     """decode the BN format with rd, rs1 and rs2 (e.g.: "r21, r5, r7")"""
@@ -353,16 +222,6 @@ def _get_two_regs_and_imm_with_flag_group(asm_str):
     if len(substr) == 4:
         flag_group = _get_flag_group(substr[3].strip())
     return rd, rs, imm, flag_group
-
-
-def _get_two_regs_with_shift(asm_str):
-    """decode standard format with possibly shifted rs but only a single source register (e.g.: "r21, r7 >> 128")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs, shift_right, shift_bits = _get_single_shifted_reg(substr[1].strip())
-    return rd, rs, shift_right, shift_bits
 
 
 def _get_imm_with_opening_par(asm_str):
@@ -438,37 +297,6 @@ def _get_two_gprs_with_inc_and_offset(asm_str):
     return x1, inc_x1, x2, inc_x2, offset
 
 
-def _get_three_regs_with_sections(asm_str):
-    """decode a notation with three regs, with indicating a upper and lower section for the source regs
-    this is used with the mul instruction (e.g.: "r24, r29l, r21u")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1, rs1_upper = _get_single_reg_with_section(substr[1].strip())
-    rs2, rs2_upper = _get_single_reg_with_section(substr[2].strip())
-    return rd, rs1, rs1_upper, rs2, rs2_upper
-
-
-def _get_limb(asm_str):
-    """returns limb for immediate string and check proper formatting (e.g."*5")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in limb reference')
-    if not asm_str.startswith('*'):
-        raise SyntaxError('Missing \'*\' character at start of limb reference')
-    if not asm_str[1:].isdigit():
-        raise SyntaxError('limb reference not a number')
-    return int(asm_str[1:])
-
-
-def _get_index_imm(asm_str):
-    """returns the index from an immediate index notation (e.g "[42]")"""
-    if not asm_str.startswith('['):
-        raise SyntaxError('Missing \'[\' character at start of index notation')
-    if not asm_str.endswith(']'):
-        raise SyntaxError('Missing \']\' character at end of index notation')
-    return _get_imm(asm_str[1:-1].strip())
-
 
 def _get_single_reg(asm_str):
     """returns a single register from string and check proper formatting (e.g "r5")"""
@@ -524,182 +352,6 @@ def _get_single_inc_gpr_with_offset(asm_str):
     offset = int(substr[0])
     gpr, inc_gpr = _get_single_inc_gpr(substr[1][:-1].strip().lower())
     return gpr, inc_gpr, offset
-
-
-def _get_single_limb(asm_str):
-    """returns a single limb with a potential increment (e.g "*6++" or "*7")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in limb reference')
-    if not asm_str.startswith('*'):
-        raise SyntaxError('Missing \'*\' character at start of limb reference')
-    if asm_str.endswith('++'):
-        inc = True
-        limb = asm_str[1:-2]
-    else:
-        inc = False
-        limb = asm_str[1:]
-    if not limb.isdigit():
-        raise SyntaxError('limb reference not a number')
-    return int(limb), inc
-
-
-def _get_single_reg_and_index_imm(asm_str):
-    """decode a single reg and an immediate index (e.g. "r15, [#7]")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected register and indexed immediate')
-    reg = _get_single_reg(substr[0].strip())
-    idx = _get_index_imm(substr[1].strip())
-    return reg, idx
-
-
-def _get_double_limb(asm_str):
-    """decode a double limb notation (e.g. "*6++, *8")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected two limb references')
-    limbl, incl = _get_single_limb(substr[0].strip())
-    limbr, incr = _get_single_limb(substr[1].strip())
-    return limbl, incl, limbr, incr
-
-
-def _get_double_reg(asm_str):
-    """decode a double reg notation without shift (e.g. "r1, r2")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    regl = _get_single_reg(substr[0].strip())
-    regr = _get_single_reg(substr[1].strip())
-    return regl, regr
-
-
-def _get_double_reg_with_imm(asm_str):
-    """decode a double reg with immediate (e.g. "r3, r5, #254")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references and immediate')
-    rd = _get_single_reg(substr[0].strip())
-    rs = _get_single_reg(substr[1].strip())
-    imm = _get_imm(substr[2].strip())
-    return rd, rs, imm
-
-
-def _get_triple_reg(asm_str):
-    """decode a triple reg notation without shift (e.g. "r1, r2, r3")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1 = _get_single_reg(substr[1].strip())
-    rs2 = _get_single_reg(substr[2].strip())
-    return rd, rs1, rs2
-
-
-def _get_single_reg_with_section(asm_str):
-    """decode a reg with indication a upper/lower section (e.g. "r21l" or "r23u")"""
-    if asm_str.endswith('u'):
-        upper = True
-    elif asm_str.endswith('l'):
-        upper = False
-    else:
-        raise SyntaxError('Expecting \'u\' or \'l\' at end of register reference '
-                          'with section indication')
-    reg = _get_single_reg(asm_str[:-1].strip())
-    return reg, upper
-
-
-def _get_limb_section(asm_str):
-    """decode the limb and the section (h or l) from limb (e.g "4l")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in limb reference')
-    if asm_str.lower().endswith('l'):
-        s = 0
-    elif asm_str.lower().endswith('h'):
-        s = 1
-    else:
-        raise SyntaxError('Expecting \'l\' or \'h\' at the end of limb section reference')
-    limb = asm_str[:-1]
-    if not limb.isdigit():
-        raise SyntaxError('reg reference not a number')
-    return int(limb), s
-
-
-def _get_reg_with_limb(asm_str):
-    """decode reference to 16 bit section of a register's limb (e.g "r15.3l")"""
-    substr = asm_str.split('.')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected reference to 16 bit '
-                          'section of limb (e.g. \"r12.3l\")')
-    reg = _get_single_reg(substr[0].strip())
-    limb, s = _get_limb_section(substr[1].strip())
-    return reg, limb, s
-
-
-def _get_reg_limb_and_imm(asm_str):
-    """decode the movi notation (reg+limb reference + immediate, e.g.: "r15.3l, #42" )"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected reg with limb + immediate')
-    reg, limb, s = _get_reg_with_limb(substr[0].strip())
-    imm = _get_imm(substr[1].strip())
-    return reg, limb, s, imm
-
-
-def _get_limb_with_paren(asm_str):
-    """decode limb from a notation with parentheses as it is used in loop instructions (e.g "*0 (")"""
-    if not asm_str.endswith('('):
-        raise SyntaxError('Expecting \'(\'')
-    return _get_limb(asm_str[:-1].strip())
-
-
-def _get_imm_with_paren(asm_str):
-    """decode immediate from a notation with parentheses as it is used in loop instructions (e.g "#4 (")"""
-    if not asm_str.endswith('('):
-        raise SyntaxError('Expecting \'(\'')
-    return _get_imm(asm_str[:-1].strip())
-
-
-def _get_loop_type_direct(asm_str):
-    """decode loop type"""
-    if asm_str.startswith('*'):
-        return False
-    elif asm_str.startswith('#'):
-        return True
-    else:
-        raise SyntaxError('Syntax error in loop notation')
-
-
-def _get_three_regs_with_shift(asm_str):
-    """decode the full standard format with rd, rs1 and possibly shifted rs2 (e.g.: "r21, r5, r7 >> 128")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1 = _get_single_reg(substr[1].strip())
-    rs2, shift_right, shift_bits = _get_single_shifted_reg(substr[2].strip())
-    return rd, rs1, rs2, shift_right, shift_bits
-
-
-def _get_two_regs_with_shift(asm_str):
-    """decode standard format with possibly shifted rs but only a single source register (e.g.: "r21, r7 >> 128")"""
-    substr = asm_str.split(',')
-    if len(substr) != 2:
-        raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs, shift_right, shift_bits = _get_single_shifted_reg(substr[1].strip())
-    return rd, rs, shift_right, shift_bits
-
-
-def _get_three_regs_with_sections(asm_str):
-    """decode a notation with three regs, with indicating a upper and lower section for the source regs
-    this is used with the mul instruction (e.g.: "r24, r29l, r21u")"""
-    substr = asm_str.split(',')
-    if len(substr) != 3:
-        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1, rs1_upper = _get_single_reg_with_section(substr[1].strip())
-    rs2, rs2_upper = _get_single_reg_with_section(substr[2].strip())
-    return rd, rs1, rs1_upper, rs2, rs2_upper
 
 
 #############################################
