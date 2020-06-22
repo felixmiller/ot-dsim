@@ -25,6 +25,9 @@ from . instructions_ot import IBnMovr
 from . instructions_ot import IBnLid
 from . instructions_ot import IBnSid
 
+from . instructions_ot import IOtLoopi
+from . instructions_ot import IOtLoop
+
 import logging
 
 
@@ -2321,6 +2324,14 @@ class ILoop(GIMidImm):
         ret += cls.enc_loop_len(length)
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
+
+    def convert_otbn(self):
+        if self.fun == self.FUN_INDIRECT:  # star/indirect case
+            gpr = self.limb + 16  # lc currently mapped on x16 to x23
+            logging.info("OTBN conversion: Mapping lc limb " + str(self.limb) + " on GPR x" + str(gpr))
+            return IOtLoop(gpr, self.len, self.ctx)
+        else:
+            return IOtLoopi(self.cnt, self.len, self.ctx)
 
     def execute(self, m):
         if self.fun == self.FUN_INDIRECT:  # star/indirect case

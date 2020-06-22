@@ -357,6 +357,27 @@ def _get_two_regs_with_shift(asm_str):
     return rd, rs, shift_right, shift_bits
 
 
+def _get_two_imm(asm_str):
+    """decode the BN format with two immediates"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 2):
+        raise SyntaxError('Syntax error in parameter set. Expected two immediates')
+    if not substr[0].strip().isdigit():
+        raise SyntaxError('first immediate not a number')
+    if not substr[1].strip().isdigit():
+        raise SyntaxError('second immediate not a number')
+    return int(substr[0].strip()), int(substr[1].strip())
+
+def _get_gpr_and_imm(asm_str):
+    """decode the BN format with two immediates"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 2):
+        raise SyntaxError('Syntax error in parameter set. Expected GPR and immediate')
+    gpr = _get_single_gpr(substr[0].strip().lower())
+    if not substr[1].strip().isdigit():
+        raise SyntaxError('second immediate not a number')
+    return gpr, int(substr[1].strip())
+
 def _get_two_gprs_with_inc(asm_str):
     """decode standard format with two possibly incremented GPRs (e.g.: "x20, x21++")"""
     substr = asm_str.split(',')
@@ -415,6 +436,17 @@ def _get_single_reg(asm_str):
         raise SyntaxError('Unexpected separator in reg reference')
     if not asm_str.lower().startswith('r'):
         raise SyntaxError('Missing \'r\' character at start of reg reference')
+    if not asm_str[1:].isdigit():
+        raise SyntaxError('reg reference not a number')
+    return int(asm_str[1:])
+
+
+def _get_single_gpr(asm_str):
+    """returns a single GPR from string and check proper formatting (e.g "x5")"""
+    if len(asm_str.split()) > 1:
+        raise SyntaxError('Unexpected separator in reg reference')
+    if not asm_str.lower().startswith('x'):
+        raise SyntaxError('Missing \'x\' character at start of reg reference')
     if not asm_str[1:].isdigit():
         raise SyntaxError('reg reference not a number')
     return int(asm_str[1:])
@@ -1429,6 +1461,61 @@ class IBnSid(GInsIndLs):
         dmem_addr = self.offset + (m.get_gpr(self.x2))
         m.set_dmem(dmem_addr, m.get_reg(src_wdr))
         super().exec_inc(m)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+#############################################
+#              Flow Control                 #
+#############################################
+
+class IOtLoopi(GIns):
+    """Immediate Loop"""
+
+    MNEM = 'OT.LOOPI'
+
+    def __init__(self, iter, size, ctx):
+        self.iter = iter
+        self.size = size
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' ' + str(self.iter) + ', ' + str(self.size) + ' ('
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        iter, size = _get_two_imm(params)
+        return cls(iter, size, ctx.ins_ctx)
+
+    def execute(self, m):
+        m.push_loop_stack(self.iter-1, self.size + m.get_pc(), m.get_pc()+1)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtLoop(GIns):
+    """Indirect Loop"""
+
+    MNEM = 'OT.LOOP'
+
+    def __init__(self, xiter, size, ctx):
+        self.xiter = xiter  # GPR containing # of iterations
+        self.size = size
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + str(self.size) + ' ('
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        gpr, size = _get_gpr_and_imm(params)
+        return cls(gpr, size, ctx.ins_ctx)
+
+    def execute(self, m):
+        iter = m.get_gpr(self.xiter)
+        m.push_loop_stack(iter-1, self.size + m.get_pc(), m.get_pc()+1)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 
