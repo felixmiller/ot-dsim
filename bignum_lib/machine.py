@@ -13,7 +13,9 @@ class CallStackUnderrun(OverflowError):
 class Machine(object):
     NUM_REGS = 32
     NUM_GPRS = 32
-    XLEN = 256
+    I_TYPE_IMM_WIDTH = 12
+    XLEN = 256  # todo: becomes WLEN
+    GPR_WIDTH = 32  # todo: becomes XLEN
     LIMBS = 8
     DMEM_DEPTH = 128
     IMEM_DEPTH = 1024
@@ -102,6 +104,7 @@ class Machine(object):
         self.reg_idx_mask = 2 ** self.reg_idx_width - 1
         self.dmem_idx_width = int(math.ceil(math.log2(self.DMEM_DEPTH)))
         self.dmem_idx_mask = 2 ** self.dmem_idx_width - 1
+        self.gpr_mask = 2**self.GPR_WIDTH - 1
         self.ctx = ctx
         self.reset(dmem, imem, s_addr, stop_addr, clear_regs=True)
 

@@ -4,6 +4,13 @@
 
 from . machine import *
 
+I_TYPE_IMM_WIDTH = Machine.I_TYPE_IMM_WIDTH
+NUM_GPRS = Machine.NUM_GPRS
+
+
+#############################################
+#                 Parsers                   #
+#############################################
 
 def _get_imm(asm_str):
     """return int for immediate string and check proper formatting (e.g "#42")"""
@@ -255,6 +262,7 @@ def _get_loop_type_direct(asm_str):
     else:
         raise SyntaxError('Syntax error in loop notation')
 
+
 def _get_flag_group(asm_str):
     substr = asm_str.strip().lower()
     if substr == 'fgd':
@@ -357,26 +365,35 @@ def _get_two_regs_with_shift(asm_str):
     return rd, rs, shift_right, shift_bits
 
 
-def _get_two_imm(asm_str):
-    """decode the BN format with two immediates"""
+def _get_imm_with_opening_par(asm_str):
+    if not asm_str.strip().endswith('('):
+        raise SyntaxError('Missing \'(\'')
+    imm = asm_str.strip()[:-1].strip()
+    if not imm.isdigit():
+        raise SyntaxError('immediate not a number')
+    return int(imm)
+
+
+def _get_two_imm_with_opening_par(asm_str):
+    """decode the BN format with two immediates and closing parenthesis at the end"""
     substr = asm_str.split(',')
     if not (len(substr) == 2):
         raise SyntaxError('Syntax error in parameter set. Expected two immediates')
     if not substr[0].strip().isdigit():
         raise SyntaxError('first immediate not a number')
-    if not substr[1].strip().isdigit():
-        raise SyntaxError('second immediate not a number')
-    return int(substr[0].strip()), int(substr[1].strip())
+    imm = _get_imm_with_opening_par(substr[1])
+    return int(substr[0].strip()), imm
 
-def _get_gpr_and_imm(asm_str):
-    """decode the BN format with two immediates"""
+
+def _get_gpr_and_imm_with_opening_par(asm_str):
+    """decode the BN format with gpr and immediate and opening parenthesis at the end"""
     substr = asm_str.split(',')
     if not (len(substr) == 2):
         raise SyntaxError('Syntax error in parameter set. Expected GPR and immediate')
     gpr = _get_single_gpr(substr[0].strip().lower())
-    if not substr[1].strip().isdigit():
-        raise SyntaxError('second immediate not a number')
-    return gpr, int(substr[1].strip())
+    imm = _get_imm_with_opening_par(substr[1])
+    return gpr, imm
+
 
 def _get_two_gprs_with_inc(asm_str):
     """decode standard format with two possibly incremented GPRs (e.g.: "x20, x21++")"""
@@ -386,6 +403,29 @@ def _get_two_gprs_with_inc(asm_str):
     xd, inc_xd = _get_single_inc_gpr(substr[0].strip())
     xs, inc_xs = _get_single_inc_gpr(substr[1].strip())
     return xd, inc_xd, xs, inc_xs
+
+
+def _get_two_gprs_with_imm(asm_str):
+    """decode standard format with two GPRs and immediate (e.g.: "x20, x21, 5")"""
+    substr = asm_str.split(',')
+    if len(substr) != 3:
+        raise SyntaxError('Syntax error in parameter set. Expected two GPR references and immediate')
+    x1 = _get_single_gpr(substr[0].strip())
+    x2 = _get_single_gpr(substr[1].strip())
+    if not substr[2].strip().isdigit():
+        raise SyntaxError('immediate not a number')
+    return x1, x2, int(substr[2].strip())
+
+
+def _get_three_gprs(asm_str):
+    """decode standard format with two GPRs and immediate (e.g.: "x20, x21, 5")"""
+    substr = asm_str.split(',')
+    if len(substr) != 3:
+        raise SyntaxError('Syntax error in parameter set. Expected three GPR references')
+    x1 = _get_single_gpr(substr[0].strip())
+    x3 = _get_single_gpr(substr[1].strip())
+    x2 = _get_single_gpr(substr[2].strip())
+    return x1, x2, x3
 
 
 def _get_two_gprs_with_inc_and_offset(asm_str):
@@ -662,6 +702,11 @@ def _get_three_regs_with_sections(asm_str):
     return rd, rs1, rs1_upper, rs2, rs2_upper
 
 
+#############################################
+#            Instruction Factory            #
+#############################################
+
+
 class InstructionFactory(object):
 
     def __init__(self):
@@ -727,6 +772,25 @@ class InstructionFactory(object):
 
     def is_valid_mnem(self, mnem):
         return mnem in self.mnem_map
+
+#############################################
+#            Bounds Checking                #
+#############################################
+
+
+def check_bounds_gpr_ref(gpr_ref):
+    if not (0 <= gpr_ref < NUM_GPRS):
+        raise SyntaxError('GPR reference out of bounds')
+
+
+def check_bounds_i_type_imm(imm):
+    if not (0 <= imm < 2 ** I_TYPE_IMM_WIDTH):
+        raise SyntaxError('imm out of bounds')
+
+
+#############################################
+#    Virtual Instruction Base Classes       #
+#############################################
 
 
 class GIns(object):
@@ -919,6 +983,56 @@ class GInsIndLs(GIns):
             m.inc_gpr(self.x1)
         if self.inc_x2:
             m.inc_gpr(self.x2)
+
+
+class GInsGpr(GIns):
+    """RV based instructions format with one dest and two src GPRs"""
+
+    def __init__(self, xd, xs1, xs2, ctx):
+        self.xd = xd
+        self.xs1 = xs1
+        self.xs2 = xs2
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.xd) + ', x' + str(self.xs1) + ', x' + str(self.xs2)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        xd, xs, imm = _get_three_gprs(params)
+        check_bounds_gpr_ref(xd)
+        check_bounds_gpr_ref(xs1)
+        check_bounds_gpr_ref(xs2)
+        return cls(xd, xs1, xs2, ctx.ins_ctx)
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtImm(GIns):
+    """RV based instructions format with one dest and one src GPR + immediate"""
+
+    def __init__(self, xd, xs, imm, ctx):
+        self.xd = xd
+        self.xs = xs
+        self.imm = imm
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.xd) + ', x' + str(self.xs) + ', ' + str(self.imm)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        xd, xs, imm = _get_two_gprs_with_imm(params)
+        check_bounds_gpr_ref(xd)
+        check_bounds_gpr_ref(xs)
+        check_bounds_i_type_imm(imm)
+        return cls(xd, xs, imm, ctx.ins_ctx)
 
 
 #############################################
@@ -1469,6 +1583,9 @@ class IBnSid(GInsIndLs):
 #              Flow Control                 #
 #############################################
 
+
+
+
 class IOtLoopi(GIns):
     """Immediate Loop"""
 
@@ -1485,7 +1602,7 @@ class IOtLoopi(GIns):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        iter, size = _get_two_imm(params)
+        iter, size = _get_two_imm_with_opening_par(params)
         return cls(iter, size, ctx.ins_ctx)
 
     def execute(self, m):
@@ -1510,12 +1627,125 @@ class IOtLoop(GIns):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        gpr, size = _get_gpr_and_imm(params)
+        gpr, size = _get_gpr_and_imm_with_opening_par(params)
         return cls(gpr, size, ctx.ins_ctx)
 
     def execute(self, m):
         iter = m.get_gpr(self.xiter)
         m.push_loop_stack(iter-1, self.size + m.get_pc(), m.get_pc()+1)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+#############################################
+#          RV derived instructions          #
+#############################################
+
+
+class IOtAdd(GInsGpr):
+    """Base add"""
+
+    MNEM = 'OT.ADD'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtAddi(IOtImm):
+    """Base add immediate"""
+
+    MNEM = 'OT.ADDI'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs) + self.imm
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtSub(GInsGpr):
+    """Base subtract"""
+
+    MNEM = 'OT.SUB'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) - m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtAnd(GInsGpr):
+    """Base bitwise AND"""
+
+    MNEM = 'OT.AND'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) & m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtAndi(IOtImm):
+    """Base bitwise AND with immediate"""
+
+    MNEM = 'OT.ANDI'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs) & self.imm
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtOr(GInsGpr):
+    """Base bitwise OR"""
+
+    MNEM = 'OT.OR'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) | m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtOri(IOtImm):
+    """Base bitwise OR with immediate"""
+
+    MNEM = 'OT.ORI'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs) | self.imm
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtXor(GInsGpr):
+    """Base bitwise XOR"""
+
+    MNEM = 'OT.XOR'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) ^ m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtXori(IOtImm):
+    """Base bitwise XOR with immediate"""
+
+    MNEM = 'OT.XORI'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs) ^ self.imm
+        m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 

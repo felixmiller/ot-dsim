@@ -27,6 +27,7 @@ from . instructions_ot import IBnSid
 
 from . instructions_ot import IOtLoopi
 from . instructions_ot import IOtLoop
+from . instructions_ot import IOtAddi
 
 import logging
 
@@ -2059,6 +2060,10 @@ class INop(GIStdNoParm):
 
     def __init__(self, ins, ctx):
         super().__init__(ins, ctx)
+
+    def convert_otbn(self):
+        logging.info("Converting nop to ADDI x0, x0, 0 ")
+        return IOtAddi(0, 0, 0, self.ctx)
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
