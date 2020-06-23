@@ -254,6 +254,16 @@ def _get_gpr_and_imm_with_opening_par(asm_str):
     return gpr, imm
 
 
+def _get_gpr_and_label(asm_str):
+    """decode the BN format with gpr and label"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 2):
+        raise SyntaxError('Syntax error in parameter set. Expected GPR and label')
+    gpr = _get_single_gpr(substr[0].strip().lower())
+    label = _get_label(substr[1].strip())
+    return gpr, label
+
+
 def _get_two_gprs_with_inc(asm_str):
     """decode standard format with two possibly incremented GPRs (e.g.: "x20, x21++")"""
     substr = asm_str.split(',')
@@ -318,6 +328,15 @@ def _get_single_gpr(asm_str):
     if not asm_str[1:].isdigit():
         raise SyntaxError('reg reference not a number')
     return int(asm_str[1:])
+
+
+def _get_label(asm_str):
+    """returns a single label"""
+    if len(asm_str.strip().split()) > 1:
+        raise SyntaxError('Unexpected separator in label')
+    if len(asm_str.strip()) == 0:
+        raise SyntaxError('label expected')
+    return asm_str.strip()
 
 
 def _get_single_inc_gpr(asm_str):
@@ -1400,6 +1419,33 @@ class IOtXori(IOtImm):
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
+
+
+class IOtJal(GIns):
+    """Jump and link"""
+
+    MNEM = 'OT.JAL'
+
+    def __init__(self, imm, ctx):
+        self.imm = imm
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        addr = self.imm
+        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + self.ctx.get_or_add_function(addr)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        gpr, func_label = _get_gpr_and_label(params)
+        if gpr != 1:
+            raise SyntaxError("Only x1 allowed as a link register")
+        imm = ctx.get_addr_for_function_name(func_label) - m.get_pc()
+        return cls(imm)
+
+    def execute(self, m):
+        m.set_gpr(1, m.get_pc())
+        return trace_str, m.get_pc + self.imm
 
 
 if __name__ == "__main__":
