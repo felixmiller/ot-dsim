@@ -300,24 +300,28 @@ class Machine(object):
             raise Exception('GPR value out of bounds')
         self.gpr[gpr] = value
         """For now GPRs are mapped onto special wide registers rfp, dmp, lc"""
-        if gpr < 8:
-            self.set_reg_limb('rfp', gpr, value)
         if 8 <= gpr < 16:
-            self.set_reg_limb('dmp', gpr-8, value)
+            self.set_reg_limb('rfp', gpr-8, value)
         if 16 <= gpr < 24:
-            self.set_reg_limb('lc', gpr-16, value)
+            self.set_reg_limb('dmp', gpr-16, value)
+        if 24 <= gpr:
+            self.set_reg_limb('lc', gpr-24, value)
 
     def get_gpr(self, gpr):
         """Get a GPR value"""
         if not (32 > gpr >= 0):
             raise Exception('Invalid GPR referenced: ' + str(gpr))
         """For now GPRs are mapped onto special wide registers rfp, dmp, lc"""
-        if gpr < 8:
-            return self.get_reg_limb('rfp', gpr)
+        if gpr == 0:
+            return 0
+        if 1 <= gpr < 8:
+            return m.gpr[gpr]
         if 8 <= gpr < 16:
-            return self.get_reg_limb('dmp', gpr-8)
+            return self.get_reg_limb('rfp', gpr-8)
         if 16 <= gpr < 24:
-            return self.get_reg_limb('lc', gpr-16)
+            return self.get_reg_limb('dmp', gpr-16)
+        if 24 <= gpr:
+            return self.get_reg_limb('lc', gpr-24)
 
     def inc_gpr(self, gpr):
         """Increment a GPR value"""

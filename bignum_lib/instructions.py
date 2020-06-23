@@ -1788,8 +1788,8 @@ class IMovLdr(GIStd):
         if self.MNEM.get(self.fun) == 'mov':
             return IBnMov(self.rd, self.rs, self.ctx)
         if self.MNEM.get(self.fun) == 'ldr':
-            xd = self.rd_limb
-            xs = self.rs_limb
+            xd = self.rd_limb + 8  # rfp currently mapped on x8 to x15
+            xs = self.rs_limb + 8  # rfp currently mapped on x8 to x15
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.rd_limb) + " on GPR x" + str(xd))
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.rs_limb) + " on GPR x" + str(xs))
             return IBnMovr(xd, self.rd_inc, xs, self.rs_inc, self.ctx)
@@ -1931,8 +1931,8 @@ class ISt(GIStd):
         if self.inc_src and self.inc_dst:
             logging.warning("Conversion of dual increment st instruction not supported. Leaving unchanged")
             return None
-        xd = self.limb_dst + 8  # dmp currently mapped on x8 to x16
-        xs = self.limb_src
+        xd = self.limb_dst + 16  # dmp currently mapped on x16 to x23
+        xs = self.limb_src + 8   # rfp currently mapped on x8 to x15
         offset = 0
         logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xd))
         logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xs))
@@ -2023,8 +2023,8 @@ class ILd(GIStd):
             if self.inc_src and self.inc_dst:
                 logging.warning("Conversion of dual increment ld instruction not supported. Leaving unchanged")
                 return None
-            xd = self.limb_dst
-            xs = self.limb_src + 8  # dmp currently mapped on x8 to x16
+            xd = self.limb_dst + 8   # dmp currently mapped on x8 to x15
+            xs = self.limb_src + 16  # dmp currently mapped on x16 to x23
             offset = 0
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xd))
             logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xs))
@@ -2332,7 +2332,7 @@ class ILoop(GIMidImm):
 
     def convert_otbn(self):
         if self.fun == self.FUN_INDIRECT:  # star/indirect case
-            gpr = self.limb + 16  # lc currently mapped on x16 to x23
+            gpr = self.limb + 24  # lc currently mapped on x24 to x31
             logging.info("OTBN conversion: Mapping lc limb " + str(self.limb) + " on GPR x" + str(gpr))
             return IOtLoop(gpr, self.len, self.ctx)
         else:
