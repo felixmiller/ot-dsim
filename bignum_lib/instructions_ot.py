@@ -656,7 +656,7 @@ class GInsIndLs(GIns):
             m.inc_gpr(self.x2)
 
 
-class GInsGpr(GIns):
+class IOtGpr(GIns):
     """RV based instructions format with one dest and two src GPRs"""
 
     def __init__(self, xd, xs1, xs2, ctx):
@@ -1313,7 +1313,7 @@ class IOtLoop(GIns):
 #############################################
 
 
-class IOtAdd(GInsGpr):
+class IOtAdd(IOtGpr):
     """Base add"""
 
     MNEM = 'OT.ADD'
@@ -1337,7 +1337,7 @@ class IOtAddi(IOtImm):
         return trace_str, False
 
 
-class IOtSub(GInsGpr):
+class IOtSub(IOtGpr):
     """Base subtract"""
 
     MNEM = 'OT.SUB'
@@ -1349,7 +1349,7 @@ class IOtSub(GInsGpr):
         return trace_str, False
 
 
-class IOtAnd(GInsGpr):
+class IOtAnd(IOtGpr):
     """Base bitwise AND"""
 
     MNEM = 'OT.AND'
@@ -1373,7 +1373,7 @@ class IOtAndi(IOtImm):
         return trace_str, False
 
 
-class IOtOr(GInsGpr):
+class IOtOr(IOtGpr):
     """Base bitwise OR"""
 
     MNEM = 'OT.OR'
@@ -1397,7 +1397,7 @@ class IOtOri(IOtImm):
         return trace_str, False
 
 
-class IOtXor(GInsGpr):
+class IOtXor(IOtGpr):
     """Base bitwise XOR"""
 
     MNEM = 'OT.XOR'
