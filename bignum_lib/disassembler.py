@@ -15,7 +15,6 @@ class Disassembler:
 
     @classmethod
     def from_hex_file_lines(cls, lines, label_lines=None, opt_print_bitmaps=False):
-
         dasm_obj = cls()
         dasm_obj.ctx = InsContext()
         dasm_obj.lines = lines
@@ -27,8 +26,6 @@ class Disassembler:
     @classmethod
     def from_ins_objects_and_context(cls, ins_objects, context):
         dasm_obj = cls()
-        # convert to ins object format used in ths class
-        # tuple of (hex_str, asm_str, malformed info and object itself)
         dasm_obj.ins_objects = ins_objects
         dasm_obj.ctx = context
         return dasm_obj
