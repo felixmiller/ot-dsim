@@ -301,7 +301,12 @@ class Machine(object):
             raise Exception('Invalid GPR referenced')
         if not (0 <= gpr < 2**self.limb_width):
             raise Exception('GPR value out of bounds')
-        self.gpr[gpr] = value
+        #writing to x0 is ignored
+        #writing to x1 is pushing to call stack
+        if gpr == 1:
+            self.push_call_stack(value)
+        if gpr >= 2:
+            self.gpr[gpr] = value
         """For now GPRs are mapped onto special wide registers rfp, dmp, lc"""
         if 8 <= gpr < 16:
             self.set_reg_limb('rfp', gpr-8, value)
@@ -315,10 +320,14 @@ class Machine(object):
         if not (32 > gpr >= 0):
             raise Exception('Invalid GPR referenced: ' + str(gpr))
         """For now GPRs are mapped onto special wide registers rfp, dmp, lc"""
+        # reading from x0 returns 0
         if gpr == 0:
             return 0
-        if 1 <= gpr < 8:
-            return m.gpr[gpr]
+        # reading from x1 is popping from the call stack
+        if gpr == 1:
+            return self.pop_call_stack()
+        if 2 <= gpr < 8:
+            return self.gpr[gpr]
         if 8 <= gpr < 16:
             return self.get_reg_limb('rfp', gpr-8)
         if 16 <= gpr < 24:
