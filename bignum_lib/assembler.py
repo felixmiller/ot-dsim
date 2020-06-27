@@ -83,6 +83,10 @@ class Assembler:
                         raise SyntaxError('Redundant \')\' in line ' + str(i+1))
                     loopclose.update({loop_stack.pop(): len(self.instr)})
 
+            # comments
+            elif tokens[0].strip().startswith('*') or tokens[0].strip().startswith('/'):
+                pass
+
             else:
                 if tokens[0].endswith(':'):
                     if len(tokens) == 1:
