@@ -342,13 +342,16 @@ class AsmCtx:
         self.ins_ctx.loopranges = [range(k, v) for k, v in loopclose.items()]
         self.ins_ctx.labels = {v: k for k, v in labels.items()}
 
-    def get_addr_for_function_name(self, fun_str):
+    def get_addr_for_function_name(self, fun_str, format='std'):
         """return destination address for function name (as parameter) and check proper formatting"""
         if len(fun_str.split()) > 1:
             raise SyntaxError('Unexpected separator in function name')
-        if not fun_str.startswith('&'):
-            raise SyntaxError('Missing \'&\' in function name parameter')
-        dest_addr = self.functions.get(fun_str[1:])[0]
+        if format == 'ot':
+            dest_addr = self.functions.get(fun_str)[0]
+        else:
+            if not fun_str.startswith('&'):
+                raise SyntaxError('Missing \'&\' in function name parameter')
+            dest_addr = self.functions.get(fun_str[1:])[0]
         if not dest_addr:
             raise Exception('Undefined function: ' + fun_str[1:])
         return dest_addr
@@ -577,7 +580,7 @@ class Ins(object):
     def get_cycles(self):
         return self.CYCLES
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         return None
 
 

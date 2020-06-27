@@ -1229,21 +1229,18 @@ class IBnSid(GInsIndLs):
 #              Flow Control                 #
 #############################################
 
-
-
-
 class IOtLoopi(GIns):
     """Immediate Loop"""
 
     MNEM = 'OT.LOOPI'
 
-    def __init__(self, iter, size, ctx):
+    def __init__(self, iter, len, ctx):
         self.iter = iter
-        self.size = size
+        self.len = len
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' ' + str(self.iter) + ', ' + str(self.size) + ' ('
+        asm_str = self.MNEM + ' ' + str(self.iter) + ', ' + str(self.len) + ' ('
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
@@ -1252,7 +1249,7 @@ class IOtLoopi(GIns):
         return cls(iter, size, ctx.ins_ctx)
 
     def execute(self, m):
-        m.push_loop_stack(self.iter-1, self.size + m.get_pc(), m.get_pc()+1)
+        m.push_loop_stack(self.iter - 1, self.len + m.get_pc(), m.get_pc() + 1)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 
@@ -1262,13 +1259,13 @@ class IOtLoop(GIns):
 
     MNEM = 'OT.LOOP'
 
-    def __init__(self, xiter, size, ctx):
+    def __init__(self, xiter, len, ctx):
         self.xiter = xiter  # GPR containing # of iterations
-        self.size = size
+        self.len = len
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + str(self.size) + ' ('
+        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + str(self.len) + ' ('
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
@@ -1278,7 +1275,7 @@ class IOtLoop(GIns):
 
     def execute(self, m):
         iter = m.get_gpr(self.xiter)
-        m.push_loop_stack(iter-1, self.size + m.get_pc(), m.get_pc()+1)
+        m.push_loop_stack(iter - 1, self.len + m.get_pc(), m.get_pc() + 1)
         trace_str = self.get_asm_str()[1]
         return trace_str, False
 
