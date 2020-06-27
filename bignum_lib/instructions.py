@@ -28,6 +28,13 @@ from . instructions_ot import IBnSid
 from . instructions_ot import IOtLoopi
 from . instructions_ot import IOtLoop
 from . instructions_ot import IOtAddi
+from . instructions_ot import IOtAndi
+from . instructions_ot import IOtJal
+from . instructions_ot import IOtJalr
+from . instructions_ot import IOtBne
+from . instructions_ot import IOtBeq
+from . instructions_ot import IOtCsrrs
+from . instructions_ot import IOtCsrrw
 
 import logging
 
@@ -852,23 +859,23 @@ class IAdd(GIStdShift):
         else:
             return super().enc(addr, mnem, params, ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.shift_right:
             shift_type = 'right'
         else:
             shift_type = 'left'
         if self.MNEM.get(self.fun) == 'add':
-            return IBnAdd(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+            return [IBnAdd(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'addx':
-            return IBnAdd(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+            return [IBnAdd(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'addc':
-            return IBnAddc(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+            return [IBnAddc(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'addcx':
-            return IBnAddc(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+            return [IBnAddc(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'addi':
-            return IBnAddi(self.rd, self.rs1, self.imm, 'standard', self.ctx)
+            return [IBnAddi(self.rd, self.rs1, self.imm, 'standard', self.ctx)]
         if self.MNEM.get(self.fun) == 'addix':
-            return IBnAddi(self.rd, self.rs1, self.imm, 'extension', self.ctx)
+            return [IBnAddi(self.rd, self.rs1, self.imm, 'extension', self.ctx)]
         return None
 
     def execute(self, m):
@@ -913,8 +920,8 @@ class IAddm(GIStdShift):
 
     zero_ranges = []
 
-    def convert_otbn(self):
-        return IBnAddm(self.rd, self.rs1, self.rs2, self.ctx)
+    def convert_otbn(self, addr):
+        return [IBnAddm(self.rd, self.rs1, self.rs2, self.ctx)]
 
     def execute(self, m):
         if self.shift_right:
@@ -984,23 +991,23 @@ class ISub(GIStdShift):
         else:
             return super().enc(addr, mnem, params, ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.shift_right:
             shift_type = 'right'
         else:
             shift_type = 'left'
         if self.MNEM.get(self.fun) == 'sub':
-            return IBnSub(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+            return [IBnSub(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'subx':
-            return IBnSub(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+            return [IBnSub(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'subb':
-            return IBnSubb(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+            return [IBnSubb(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'subbx':
-            return IBnSubb(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)
+            return [IBnSubb(self.rd, self.rs1, self.rs2, 'extension', shift_type, self.shift_bytes, self.ctx)]
         if self.MNEM.get(self.fun) == 'subi':
-            return IBnSubi(self.rd, self.rs1, self.imm, 'standard', self.ctx)
+            return [IBnSubi(self.rd, self.rs1, self.imm, 'standard', self.ctx)]
         if self.MNEM.get(self.fun) == 'subix':
-            return IBnSubi(self.rd, self.rs1, self.imm, 'extension', self.ctx)
+            return [IBnSubi(self.rd, self.rs1, self.imm, 'extension', self.ctx)]
         return None
 
     def execute(self, m):
@@ -1051,8 +1058,8 @@ class ISubm(GIStdShift):
 
     zero_ranges = [(7, 0)]  # disallow shifting for now
 
-    def convert_otbn(self):
-        return IBnSubm(self.rd, self.rs1, self.rs2, self.ctx)
+    def convert_otbn(self, addr):
+        return [IBnSubm(self.rd, self.rs1, self.rs2, self.ctx)]
 
     def execute(self, m):
         if self.shift_right:
@@ -1120,10 +1127,10 @@ class IMul128(GIStd):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         rs1_hw_sel = 'upper' if self.r1_upper else'lower'
         rs2_hw_sel = 'upper' if self.r2_upper else 'lower'
-        return IBnMulh(self.rd, self.rs1, rs1_hw_sel, self.rs2, rs2_hw_sel, self.ctx)
+        return [IBnMulh(self.rd, self.rs1, rs1_hw_sel, self.rs2, rs2_hw_sel, self.ctx)]
 
     def execute(self, m):
         op1 = (m.get_reg(self.rs1) >> int(m.XLEN/2)*int(self.r1_upper)) & m.half_xlen_mask
@@ -1146,12 +1153,12 @@ class IAnd(GIStdShift):
 
     zero_ranges = []
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.shift_right:
             shift_type = 'right'
         else:
             shift_type = 'left'
-        return IBnAnd(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        return [IBnAnd(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
 
     def execute(self, m):
         if self.shift_right:
@@ -1173,12 +1180,12 @@ class IOr(GIStdShift):
 
     zero_ranges = []
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.shift_right:
             shift_type = 'right'
         else:
             shift_type = 'left'
-        return IBnOr(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        return [IBnOr(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
 
     def execute(self, m):
         if self.shift_right:
@@ -1212,12 +1219,12 @@ class INot(GIStdShift):
         enc_tab += 'D=0: left shift; D=1: right shift'
         return enc_tab
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.shift_right:
             shift_type = 'right'
         else:
             shift_type = 'left'
-        return IBnNot(self.rd, self.rs2, shift_type, self.shift_bytes, self.ctx)
+        return [IBnNot(self.rd, self.rs2, shift_type, self.shift_bytes, self.ctx)]
 
     def execute(self, m):
         if self.shift_right:
@@ -1239,12 +1246,13 @@ class IXor(GIStdShift):
 
     zero_ranges = []
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.shift_right:
             shift_type = 'right'
         else:
             shift_type = 'left'
-        return IBnXor(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)
+        return [IBnXor(self.rd, self.rs1, self.rs2, 'standard', shift_type, self.shift_bytes, self.ctx)]
+
 
     def execute(self, m):
         if self.shift_right:
@@ -1298,23 +1306,23 @@ class ISel(GIStd):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.MNEM.get((self.fun, self.imm)) == 'sell':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'l', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'l', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'selm':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'm', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'm', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'selc':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'c', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'c', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'selz':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'z', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'standard', 'z', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'sellx':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'l', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'l', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'selmx':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'm', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'm', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'selcx':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'c', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'c', self.ctx)]
         if self.MNEM.get((self.fun, self.imm)) == 'selzx':
-            return IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'z', self.ctx)
+            return [IBnSel(self.rd, self.rs1, self.rs2, 'extension', 'z', self.ctx)]
         return None
 
     def execute(self, m):
@@ -1377,8 +1385,8 @@ class IRshi(GIStd):
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
-        return IBnRshi(self.rd, self.rs1, self.rs2, self.imm, self.ctx)
+    def convert_otbn(self, addr):
+        return [IBnRshi(self.rd, self.rs1, self.rs2, self.imm, self.ctx)]
 
     def execute(self, m):
         conc = (m.get_reg(self.rs2) << m.XLEN) + m.get_reg(self.rs1)
@@ -1418,15 +1426,15 @@ class ICmp(GIStd):
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.MNEM.get(self.fun) == 'cmp':
-            return IBnCmp(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)
+            return [IBnCmp(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)]
         if self.MNEM.get(self.fun) == 'cmpx':
-            return IBnCmp(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)
+            return [IBnCmp(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)]
         if self.MNEM.get(self.fun) == 'cmpb':
-            return IBnCmpb(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)
+            return [IBnCmpb(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)]
         if self.MNEM.get(self.fun) == 'cmpbx':
-            return IBnCmpb(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)
+            return [IBnCmpb(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)]
         return None
 
     def execute(self, m):
@@ -1784,15 +1792,15 @@ class IMovLdr(GIStd):
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.MNEM.get(self.fun) == 'mov':
-            return IBnMov(self.rd, self.rs, self.ctx)
+            return [IBnMov(self.rd, self.rs, self.ctx)]
         if self.MNEM.get(self.fun) == 'ldr':
             xd = self.rd_limb + 8  # rfp currently mapped on x8 to x15
             xs = self.rs_limb + 8  # rfp currently mapped on x8 to x15
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.rd_limb) + " on GPR x" + str(xd))
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.rs_limb) + " on GPR x" + str(xs))
-            return IBnMovr(xd, self.rd_inc, xs, self.rs_inc, self.ctx)
+            return [IBnMovr(xd, self.rd_inc, xs, self.rs_inc, self.ctx)]
         return None
 
     def execute(self, m):
@@ -1926,7 +1934,7 @@ class ISt(GIStd):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         # conversion of dual increment not yet supported
         if self.inc_src and self.inc_dst:
             logging.warning("Conversion of dual increment st instruction not supported. Leaving unchanged")
@@ -1936,7 +1944,7 @@ class ISt(GIStd):
         offset = 0
         logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xd))
         logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xs))
-        return IBnSid(xs, self.inc_src, xd, self.inc_dst, offset, self.ctx)
+        return [IBnSid(xs, self.inc_src, xd, self.inc_dst, offset, self.ctx)]
 
     def execute(self, m):
         sptr = m.get_reg_limb('rfp', self.limb_src) & m.reg_idx_mask
@@ -2017,7 +2025,7 @@ class ILd(GIStd):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.MNEM.get(self.dmem_src) == 'ld':
             # conversion of dual increment not yet supported
             if self.inc_src and self.inc_dst:
@@ -2028,7 +2036,7 @@ class ILd(GIStd):
             offset = 0
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xd))
             logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xs))
-            return IBnLid(xd, self.inc_dst, xs, self.inc_src, offset, self.ctx)
+            return [IBnLid(xd, self.inc_dst, xs, self.inc_src, offset, self.ctx)]
         return None
 
     def execute(self, m):
@@ -2061,9 +2069,10 @@ class INop(GIStdNoParm):
     def __init__(self, ins, ctx):
         super().__init__(ins, ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         logging.info("Converting nop to ADDI x0, x0, 0 ")
-        return IOtAddi(0, 0, 0, self.ctx)
+        return [IOtAddi(0, 0, 0, self.ctx)]
+        #return [IOtAddi(0, 0, 0, self.ctx), IOtAddi(0, 0, 0, self.ctx), IOtAddi(0, 0, 0, self.ctx)]
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
@@ -2128,9 +2137,12 @@ class IRet(GIStdNoParm):
         ret = cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
+    def convert_otbn(self, addr):
+        return [IOtJalr(0, 1, 0, self.ctx)]
+
     def execute(self, m):
         try:
-            ret_addr = m.pop_call_stack() + 1
+            ret_addr = m.pop_call_stack()
         except CallStackUnderrun:
             if m.get_pc() == m.stop_addr:
                 # We have an underrun but are at the stop address anyways, so this is fine
@@ -2149,6 +2161,10 @@ class ICall(GIMidImm):
 
     ZERO_RANGES = [Ins.FUN_RANGE, GIMidImm.FUNB_RANGE]
 
+    def __init__(self, ret, ctx, label=False):
+        self.label = label
+        super().__init__(ret, ctx)
+
     def get_asm_str(self):
         addr = self.imm
         asm_str = self.MNEM.get(self.fun) + ' &' + self.ctx.get_or_add_function(addr)
@@ -2162,16 +2178,21 @@ class ICall(GIMidImm):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
+        func_label = params[1:].strip()
         dest_addr = ctx.get_addr_for_function_name(params)
         ret = 0
         ret += cls.enc_imm(dest_addr)
         ret += cls.enc_op(cls.OP)
-        return cls(ret, ctx.ins_ctx)
+        return cls(ret, ctx.ins_ctx, func_label)
+
+    def convert_otbn(self, addr):
+        jal_imm = self.imm - addr
+        return [IOtJal(1, jal_imm, addr, self.ctx, label=self.label)]
 
     def execute(self, m):
         m.stat_record_func_call(call_site = m.pc, callee_func = self.imm)
 
-        m.push_call_stack(m.get_pc())
+        m.push_call_stack(m.get_pc()+1)
 
         trace_str = self.get_asm_str()[1]
         return trace_str, self.imm
@@ -2188,7 +2209,8 @@ class IBranch(GIMidImm):
 
     zero_ranges = [Ins.FUN_RANGE]
 
-    def __init__(self, ins, ctx):
+    def __init__(self, ins, ctx, label=None):
+        self.label = label
         super().__init__(ins, ctx)
 
     def get_asm_str(self):
@@ -2204,13 +2226,62 @@ class IBranch(GIMidImm):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
+        label = params
         dest_addr = ctx.get_addr_for_label(params)
         ret = 0
         ret += cls.enc_imm(dest_addr)
         funb = cls.get_bin_for_mnem(mnem)
         ret += cls.enc_funb(funb)
         ret += cls.enc_op(cls.OP)
-        return cls(ret, ctx.ins_ctx)
+        return cls(ret, ctx.ins_ctx, label)
+
+    def convert_otbn(self, addr):
+        offset = self.imm - addr
+        if self.MNEM.get(self.funb) == 'bc':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 1, self.ctx)
+            ins_branch = IOtBne(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bl':
+            #return None
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 2, self.ctx)
+            ins_branch = IOtBne(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bm':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 4, self.ctx)
+            ins_branch = IOtBne(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bz':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 8, self.ctx)
+            ins_branch = IOtBne(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bnc':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 1, self.ctx)
+            ins_branch = IOtBeq(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bnl':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 2, self.ctx)
+            ins_branch = IOtBeq(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bnm':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 4, self.ctx)
+            ins_branch = IOtBeq(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'bnz':
+            ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
+            ins_andi = IOtAndi(2, 2, 8, self.ctx)
+            ins_branch = IOtBeq(2, 0, offset, addr, self.ctx, self.label)
+            return [ins_read_csr, ins_andi, ins_branch]
+        if self.MNEM.get(self.funb) == 'b':
+            return [IOtJal(0, offset, addr, self.ctx, self.label)]
+        logging.warning('Unknown opcode at address ' + self.addr + '. Cannot convert instruction.')
+        return None
 
     def execute(self, m):
         trace_str = self.get_asm_str()[1]
@@ -2330,13 +2401,13 @@ class ILoop(GIMidImm):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
-    def convert_otbn(self):
+    def convert_otbn(self, addr):
         if self.fun == self.FUN_INDIRECT:  # star/indirect case
             gpr = self.limb + 24  # lc currently mapped on x24 to x31
             logging.info("OTBN conversion: Mapping lc limb " + str(self.limb) + " on GPR x" + str(gpr))
-            return IOtLoop(gpr, self.len, self.ctx)
+            return [IOtLoop(gpr, self.len, self.ctx)]
         else:
-            return IOtLoopi(self.cnt, self.len, self.ctx)
+            return [IOtLoopi(self.cnt, self.len, self.ctx)]
 
     def execute(self, m):
         if self.fun == self.FUN_INDIRECT:  # star/indirect case

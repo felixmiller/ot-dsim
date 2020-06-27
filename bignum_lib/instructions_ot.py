@@ -264,6 +264,28 @@ def _get_gpr_and_label(asm_str):
     return gpr, label
 
 
+def _get_two_gprs_and_label(asm_str):
+    """decode the RV format with two GPRRs and label"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 3):
+        raise SyntaxError('Syntax error in parameter set. Expected two GPRs and label')
+    gpr1 = _get_single_gpr(substr[0].strip().lower())
+    gpr2 = _get_single_gpr(substr[1].strip().lower())
+    label = _get_label(substr[2].strip())
+    return gpr1, gpr2, label
+
+
+def _get_gpr_imm_gpr(asm_str):
+    """decode the RV format with gpr followed by immediate followed by GPR"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 3):
+        raise SyntaxError('Syntax error in parameter set. Expected two GPRs and immediate')
+    gpr1 = _get_single_gpr(substr[0].strip().lower())
+    imm = _get_imm(substr[1].strip())
+    gpr2 = _get_single_gpr(substr[2].strip().lower())
+    return gpr1, imm, gpr2
+
+
 def _get_two_gprs_with_inc(asm_str):
     """decode standard format with two possibly incremented GPRs (e.g.: "x20, x21++")"""
     substr = asm_str.split(',')
@@ -656,54 +678,7 @@ class GInsIndLs(GIns):
             m.inc_gpr(self.x2)
 
 
-class IOtGpr(GIns):
-    """RV based instructions format with one dest and two src GPRs"""
 
-    def __init__(self, xd, xs1, xs2, ctx):
-        self.xd = xd
-        self.xs1 = xs1
-        self.xs2 = xs2
-        super().__init__(ctx)
-
-    def get_asm_str(self):
-        asm_str = self.MNEM + ' x' + str(self.xd) + ', x' + str(self.xs1) + ', x' + str(self.xs2)
-        return self.hex_str, asm_str, self.malformed
-
-    @classmethod
-    def enc(cls, addr, mnem, params, ctx):
-        xd, xs, imm = _get_three_gprs(params)
-        check_bounds_gpr_ref(xd)
-        check_bounds_gpr_ref(xs1)
-        check_bounds_gpr_ref(xs2)
-        return cls(xd, xs1, xs2, ctx.ins_ctx)
-
-    def execute(self, m):
-        res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
-        m.set_gpr(self.xd, res & m.gpr_mask)
-        trace_str = self.get_asm_str()[1]
-        return trace_str, False
-
-
-class IOtImm(GIns):
-    """RV based instructions format with one dest and one src GPR + immediate"""
-
-    def __init__(self, xd, xs, imm, ctx):
-        self.xd = xd
-        self.xs = xs
-        self.imm = imm
-        super().__init__(ctx)
-
-    def get_asm_str(self):
-        asm_str = self.MNEM + ' x' + str(self.xd) + ', x' + str(self.xs) + ', ' + str(self.imm)
-        return self.hex_str, asm_str, self.malformed
-
-    @classmethod
-    def enc(cls, addr, mnem, params, ctx):
-        xd, xs, imm = _get_two_gprs_with_imm(params)
-        check_bounds_gpr_ref(xd)
-        check_bounds_gpr_ref(xs)
-        check_bounds_i_type_imm(imm)
-        return cls(xd, xs, imm, ctx.ins_ctx)
 
 
 #############################################
@@ -1312,6 +1287,103 @@ class IOtLoop(GIns):
 #          RV derived instructions          #
 #############################################
 
+class IOtGpr(GIns):
+    """RV based instructions format with one dest and two src GPRs"""
+
+    def __init__(self, xd, xs1, xs2, ctx):
+        self.xd = xd
+        self.xs1 = xs1
+        self.xs2 = xs2
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.xd) + ', x' + str(self.xs1) + ', x' + str(self.xs2)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        xd, xs, imm = _get_three_gprs(params)
+        check_bounds_gpr_ref(xd)
+        check_bounds_gpr_ref(xs1)
+        check_bounds_gpr_ref(xs2)
+        return cls(xd, xs1, xs2, ctx.ins_ctx)
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtImm(GIns):
+    """RV based instructions format with one dest and one src GPR + immediate"""
+
+    def __init__(self, xd, xs, imm, ctx):
+        self.xd = xd
+        self.xs = xs
+        self.imm = imm
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.xd) + ', x' + str(self.xs) + ', ' + str(self.imm)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        xd, xs, imm = _get_two_gprs_with_imm(params)
+        check_bounds_gpr_ref(xd)
+        check_bounds_gpr_ref(xs)
+        check_bounds_i_type_imm(imm)
+        return cls(xd, xs, imm, ctx.ins_ctx)
+
+
+class IOtBranch(GIns):
+    """Branch type"""
+
+    def __init__(self, grs1, grs2, offset, addr, ctx, label=None):
+        self.grs1 = grs1
+        self.grs2 = grs2
+        self.offset = offset
+        self.addr = addr
+        self.label = label
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        target = self.offset + self.addr
+        asm_str = self.MNEM + ' x' + str(self.grs1) + ', x' + str(self.grs2) + ', ' \
+                  + self.ctx.get_or_add_label(target)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        gpr1, gpr2, func_label = _get_two_gprs_and_label(params)
+        offset = ctx.get_addr_for_label(func_label) - addr
+        check_bounds_gpr_ref(gpr1)
+        check_bounds_gpr_ref(gpr2)
+        return cls(gpr1, gpr2, offset, addr, ctx.ins_ctx, label=func_label)
+
+
+class IOtCsr(GIns):
+    """CSR type"""
+
+    def __init__(self, grd, csr, grs, ctx):
+        self.grd = grd
+        self.csr = csr
+        self.grs = grs
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.grd) + ', ' + str(self.csr) + ', x' + str(self.grs)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        grd, imm, grs = _get_gpr_imm_gpr(params)
+        check_bounds_gpr_ref(grd)
+        check_bounds_gpr_ref(grs)
+        # todo: check bounds of immediate
+        return cls(grd, imm, grs, ctx.ins_ctx)
+
 
 class IOtAdd(IOtGpr):
     """Base add"""
@@ -1426,26 +1498,106 @@ class IOtJal(GIns):
 
     MNEM = 'OT.JAL'
 
-    def __init__(self, imm, ctx):
+    def __init__(self, xd, imm, addr, ctx, label=None):
+        self.xd = xd
         self.imm = imm
+        self.addr = addr
+        self.label = label
         super().__init__(ctx)
 
     def get_asm_str(self):
-        addr = self.imm
-        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + self.ctx.get_or_add_function(addr)
+        target = self.imm + self.addr
+        asm_str = self.MNEM + ' x' + str(self.xd) + ', ' + self.ctx.get_or_add_label(target)
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
         gpr, func_label = _get_gpr_and_label(params)
-        if gpr != 1:
-            raise SyntaxError("Only x1 allowed as a link register")
-        imm = ctx.get_addr_for_function_name(func_label) - m.get_pc()
-        return cls(imm)
+        imm = ctx.get_addr_for_label(func_label) - addr
+        check_bounds_gpr_ref(gpr)
+        return cls(gpr, imm, addr, ctx.ins_ctx, label=func_label)
 
     def execute(self, m):
-        m.set_gpr(1, m.get_pc())
-        return trace_str, m.get_pc + self.imm
+        m.set_gpr(self.xd, m.get_pc() + 1)
+        jump_target = m.get_pc() + self.imm
+        trace_str = self.get_asm_str()[1]
+        return trace_str, jump_target
+
+
+class IOtJalr(IOtImm):
+    """Jump and link register"""
+
+    MNEM = 'OT.JALR'
+
+    def execute(self, m):
+        m.set_gpr(self.xd, m.get_pc())
+        try:
+            jump_target = m.get_gpr(self.xs) + self.imm
+        except CallStackUnderrun:
+            if m.get_pc() == m.stop_addr:
+                # We have an underrun but are at the stop address anyways, so this is fine
+                jump_target = m.get_pc()
+            else:
+                m.finish()
+                jump_target = m.get_pc()
+
+        trace_str = self.get_asm_str()[1]
+        return trace_str, jump_target
+
+
+class IOtBne(IOtBranch):
+    """Branch not equal"""
+
+    MNEM = 'OT.BNE'
+
+    def execute(self, m):
+        branch_target = False
+        if m.get_gpr(self.grs1) != m.get_gpr(self.grs2):
+            branch_target = m.get_pc() + self.offset
+        trace_str = self.get_asm_str()[1]
+        return trace_str, branch_target
+
+
+class IOtBeq(IOtBranch):
+    """Branch equal"""
+
+    MNEM = 'OT.BEQ'
+
+    def execute(self, m):
+        branch_target = False
+        branch = m.get_gpr(self.grs1) == m.get_gpr(self.grs2)
+        if branch:
+            branch_target = m.get_pc() + self.offset
+        trace_str = self.get_asm_str()[1]
+        return trace_str, branch_target
+
+
+class IOtCsrrs(IOtCsr):
+    """Atomic Read and Set Bits in CSR"""
+
+    MNEM = 'OT.CSRRS'
+
+    def execute(self, m):
+        csr_val = m.get_csr(self.csr)
+        m.set_gpr(self.grd, csr_val)
+        csr_new = csr_val | m.get_gpr(self.grs)
+        m.set_csr(self.csr, csr_new)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
+
+
+class IOtCsrrw(IOtCsr):
+    """Atomic Read/Write CSR"""
+
+    MNEM = 'OT.CSRRW'
+
+    def execute(self, m):
+        csr_val = m.get_csr(self.csr)
+        m.set_gpr(self.grd, csr_val)
+        csr_new = m.get_gpr(self.grs)
+        m.set_csr(self.csr, csr_new)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, False
 
 
 if __name__ == "__main__":
