@@ -22,6 +22,9 @@ class Machine(object):
     DEFAULT_DUMP_FILENAME = 'dmem_dump.hex'
     LOOP_STACK_SIZE = 16
     CALL_STACK_SIZE = 16
+    CSR_FLAG = 0x7C0
+    CSR_MOD_BASE = 0x7D0
+    CSR_RNG = 0xFC0
 
     # breakpoints is dictionary with break addresses being keys and
     # values are tuples of number of passes required and the pass counter
@@ -323,6 +326,26 @@ class Machine(object):
         if 24 <= gpr:
             return self.get_reg_limb('lc', gpr-24)
 
+    def get_csr(self, csr):
+        """Return a CSR"""
+        if csr == self.CSR_FLAG:
+            return self.get_flags_as_bin()
+        if (csr & 0xff8) == self.CSR_MOD_BASE:
+            return self.get_reg_limb('mod', csr & 0x7)
+        if csr == self.CSR_RND:
+            return self.get_reg_limb('rnd', 0)
+        raise Exception('Invalid CSR')
+
+    def set_csr(self, csr, val):
+        if csr == self.CSR_FLAG:
+            self.set_flags_as_bin(val & 0xFF)
+            return
+        if (csr & 0xff8) == self.CSR_MOD_BASE:
+            return self.set_reg_limb('mod', csr & 0x7, val)
+        if csr == self.CSR_RND:
+            return self.set_reg_limb('rnd', 0, val)
+        raise Exception('Invalid CSR')
+
     def inc_gpr(self, gpr):
         """Increment a GPR value"""
         if not (32 > gpr >= 0):
@@ -427,6 +450,27 @@ class Machine(object):
             return self.XC
         else:
             raise Exception('Invalid flag identifier')
+
+    def get_flags_as_bin(self):
+        ret = int(self.get_flag('C'))
+        ret += int(self.get_flag('L')) << 1
+        ret += int(self.get_flag('M')) << 2
+        ret += int(self.get_flag('Z')) << 3
+        ret += int(self.get_flag('XC')) << 4
+        ret += int(self.get_flag('XL')) << 5
+        ret += int(self.get_flag('XM')) << 6
+        ret += int(self.get_flag('XZ')) << 7
+        return ret
+
+    def set_flags_as_bin(self, flags):
+        self.set_flag('C', flags & 1)
+        self.set_flag('L', (flags >> 1) & 1)
+        self.set_flag('M', (flags >> 2) & 1)
+        self.set_flag('Z', (flags >> 3) & 1)
+        self.set_flag('XC', (flags >> 4) & 1)
+        self.set_flag('XL', (flags >> 5) & 1)
+        self.set_flag('XM', (flags >> 6) & 1)
+        self.set_flag('XZ', (flags >> 7) & 1)
 
     def set_flag(self, flag, val):
         """Set/unset a flag"""
