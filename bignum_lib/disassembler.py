@@ -90,13 +90,13 @@ class Disassembler:
             print('No malformed instructions detected')
 
     def create_assembly(self, opt_address=False, opt_address_format=None, opt_function_length=False,
-                        opt_code=False, opt_defines=False):
+                        opt_code=False, opt_defines=False, format=None):
         """create assembly from instruction objects"""
         for i, item in enumerate(self.ins_objects):
             if isinstance(item, ILoop):
                 self.loopendstack.append(item.get_len() + i)
 
-            if i in self.ctx.functions:
+            if i in self.ctx.functions and format != 'otbn':
                 fun_len = 0
                 for j in range(i+1, len(self.ins_objects) + 1):
                     fun_len = j-i
@@ -125,10 +125,17 @@ class Disassembler:
                 if opt_code and opt_defines:
                     self.asm_lines.append('#define CF_' + self.ctx.functions.get(i) + '_adr ' + str(i))
             if i in self.ctx.labels:
+                label = self.ctx.labels.get(i)
                 lab = ''
+                # otbn format technically does not use function labels. We use them here to add a header
+                # for labels that have been functions in the old format
+                if format=='otbn':
+                    lab += '\n'
+                    if label in self.ctx.functions.values():
+                        lab += '/**\n* Function ' + label + '\n*/\n'
                 if opt_code:
                     lab += '   /*'
-                lab += self.ctx.labels.get(i) + ':'
+                lab += label + ':'
                 if opt_code:
                     lab += ' */'
                 self.asm_lines.append(lab)
@@ -152,7 +159,7 @@ class Disassembler:
                         self.asm_lines.append('       )')
                     else:
                         self.asm_lines.append(')')
-            if i == len(self.ins_objects) - 1:
+            if (i == len(self.ins_objects) - 1) and (format != 'otbn'):
                 if opt_code:
                     self.asm_lines.append('/* } */')
                 else:
