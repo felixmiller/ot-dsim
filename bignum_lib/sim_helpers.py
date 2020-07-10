@@ -48,7 +48,7 @@ def ins_objects_from_asm_file(asm_file):
     lines = asm_file.readlines()
     assembler = Assembler(lines)
     assembler.assemble()
-    return assembler.get_instruction_objects(), assembler.get_instruction_context()
+    return assembler.get_instruction_objects(), assembler.get_instruction_context(), assembler.breakpoints
 
 def dump_instruction_histo(instruction_histo, sort_by="key"):
     if sort_by == "key":
