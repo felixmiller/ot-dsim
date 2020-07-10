@@ -597,6 +597,13 @@ class Machine(object):
                 res_str += '\n'
         return res_str
 
+    def get_gprs(self):
+        """Get a table with hex strings of all regs"""
+        res_str = ''
+        for i in range(2, self.NUM_GPRS):
+            res_str += ('r' + str(i)).rjust(3) + ': ' + hex(self.get_gpr(i)) + '\n'
+        return res_str
+
     def get_s_reg_table(self, header):
         """Get a table with hexstrings of all special registers"""
         res_str = ''
@@ -777,6 +784,7 @@ class Machine(object):
         print('r  - print register file')
         print('rs - print special registers')
         print('ra - print all registers')
+        print('x - print GPRs (OTBN only)')
         print('d [len] [start] - print dmem words')
         print('f  - print flags')
         print('ls - print loop stack')
@@ -831,6 +839,8 @@ class Machine(object):
                 print(self.get_s_reg_table(True))
             elif inp == 'ra':
                 print(self.get_all_reg_table(True))
+            elif inp == 'x':
+                print(self.get_gprs())
             elif inp == 'f':
                 print(self.get_all_flags_table())
             elif inp == 'ls':
