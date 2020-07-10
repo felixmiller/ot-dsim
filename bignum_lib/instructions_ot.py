@@ -6,6 +6,7 @@ from . machine import *
 
 I_TYPE_IMM_WIDTH = Machine.I_TYPE_IMM_WIDTH
 NUM_GPRS = Machine.NUM_GPRS
+NUM_WRDS = Machine.NUM_REGS
 
 
 #############################################
@@ -514,6 +515,11 @@ def check_bounds_gpr_ref(gpr_ref):
         raise SyntaxError('GPR reference out of bounds')
 
 
+def check_bounds_wrd_ref(wrd_ref):
+    if not (0 <= wrd_ref < NUM_WRDS):
+        raise SyntaxError('WRD reference out of bounds')
+
+
 def check_bounds_i_type_imm(imm):
     if not (0 <= imm < 2 ** I_TYPE_IMM_WIDTH):
         raise SyntaxError('imm out of bounds')
@@ -716,7 +722,26 @@ class GInsIndLs(GIns):
             m.inc_gpr(self.x2)
 
 
+class GInsWsr(GIns):
+    """WSR type"""
 
+    def __init__(self, wrd, wsr, wrs, ctx):
+        self.wrd = wrd
+        self.wsr = wsr
+        self.wrs = wrs
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' r' + str(self.wrd) + ', ' + str(self.wsr) + ', r' + str(self.wrs)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        wrd, imm, wrs = _get_wdr_imm_wd(params)
+        check_bounds_wrd_ref(wrd)
+        check_bounds_wrd_ref(wrs)
+        # todo: check bounds of immediate
+        return cls(wrd, imm, wrs, ctx.ins_ctx)
 
 
 #############################################
@@ -1260,7 +1285,35 @@ class IBnSid(GInsIndLs):
         m.set_dmem(dmem_addr, m.get_reg(src_wdr))
         super().exec_inc(m)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
+
+
+class IBnWsrrs(GInsWsr):
+    """Atomic Read and Set Bits in WSR"""
+
+    MNEM = 'BN.WSRRS'
+
+    def execute(self, m):
+        wsr_val = m.get_wsr(self.wsr)
+        m.set_reg(self.wrd, wsr_val)
+        wsr_new = wsr_val | m.get_reg(self.wrs)
+        m.set_wsr(self.wsr, wsr_new)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
+
+
+class IBnWsrrw(GInsWsr):
+    """Atomic Read/Write WSR"""
+
+    MNEM = 'BN.WSRRW'
+
+    def execute(self, m):
+        wsr_val = m.get_wsr(self.wsr)
+        m.set_reg(self.wrd, wsr_val)
+        wsr_new = m.get_gpr(self.wrs)
+        m.set_wsr(self.wsr, wsr_new)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
 
 
 #############################################
@@ -1278,12 +1331,12 @@ class IOtLoopi(GIns):
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' ' + str(self.iter) + ', ' + str(self.len) + ' ('
+        asm_str = self.MNEM + ' ' + str(self.iter) + ', ' + str(self.len)
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        iter, size = _get_two_imm_with_opening_par(params)
+        iter, size = _get_two_imm(params)
         return cls(iter, size, ctx.ins_ctx)
 
     def execute(self, m):
@@ -1303,13 +1356,24 @@ class IOtLoop(GIns):
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + str(self.len) + ' ('
+        asm_str = self.MNEM + ' x' + str(self.xiter) + ', ' + str(self.len)
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        gpr, size = _get_gpr_and_imm_with_opening_par(params)
-        return cls(gpr, size, ctx.ins_ctx)
+        gpr, len = _get_gpr_and_optional_imm(params)
+        cl_addr = ctx.get_loop_close_addr(addr)
+        if not cl_addr and not len:
+            raise SyntaxError('No \'loopend\' pseudo instruction found and no length immediate in loop instruction.'
+                              ' One must be provided.')
+        len_from_pseudo = cl_addr - addr - 1
+        if len and len_from_pseudo:
+            if len != len_from_pseudo:
+                raise SyntaxError('Mismatch between loop length immediate and calculated length with '
+                                  '\'loopend\' pseudo instruction')
+        if not len:
+            len = len_from_pseudo
+        return cls(gpr, len, ctx.ins_ctx)
 
     def execute(self, m):
         iter = m.get_gpr(self.xiter)
@@ -1337,7 +1401,7 @@ class IOtGpr(GIns):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        xd, xs, imm = _get_three_gprs(params)
+        xd, xs1, xs2 = _get_three_gprs(params)
         check_bounds_gpr_ref(xd)
         check_bounds_gpr_ref(xs1)
         check_bounds_gpr_ref(xs2)
@@ -1525,7 +1589,19 @@ class IOtXori(IOtImm):
         res = m.get_gpr(self.xs) ^ self.imm
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
+
+
+class IOtSlli(IOtImm):
+    """Left shift immediate"""
+
+    MNEM = 'OT.SLLI'
+
+    def execute(self, m):
+        res = m.get_gpr(self.xs) << self.imm
+        m.set_gpr(self.xd, res & m.gpr_mask)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
 
 
 class IOtJal(GIns):
@@ -1632,7 +1708,59 @@ class IOtCsrrw(IOtCsr):
         csr_new = m.get_gpr(self.grs)
         m.set_csr(self.csr, csr_new)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
+
+
+class IOtLui(GIns):
+    """Load upper immediate"""
+
+    MNEM = 'OT.LUI'
+
+    def __init__(self, grd, imm, ctx):
+        self.grd = grd
+        self.imm = imm
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.grd) + ', ' + str(self.imm)
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        grd, imm = _get_gpr_and_imm(params)
+        return cls(grd, imm, ctx.ins_ctx)
+
+    def execute(self, m):
+        grp_low_12_bits = m.get_gpr(self.grd) & 2**12-1
+        new_val = (self.imm << 12) + grp_low_12_bits
+        m.set_gpr(self.grd, new_val)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
+
+class IOtLw(GIns):
+    """Load word"""
+
+    MNEM = 'OT.LW'
+
+    def __init__(self, grd, offset, grs, ctx):
+        self.grd = grd
+        self.offset = offset
+        self.grs = grs
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' x' + str(self.grd) + ', ' + str(self.offset) + '(' + str(self.grs) + ')'
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        grd, offset, grs = _get_two_gprs_with_offset(params)
+        return cls(grd, offset, grs, ctx.ins_ctx)
+
+    def execute(self, m):
+        m.set_gpr(self.grd, m.get_dmem_otbn(m.get_gpr(self.grs)+self.offset))
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
 
 
 if __name__ == "__main__":
