@@ -9,8 +9,8 @@ from . instructions_ot import InstructionFactory as InstructionFactoryOt
 class Assembler:
     # Tokens
     TOK_FUNCTION = "function"
-    TOK_LOOP = 'loop'
-    TOK_SPECIAL = [')', '}']
+    TOK_LOOP = ['loop', 'OT.LOOP', 'OT.LOOPI']
+    TOK_SPECIAL = [')', '}', 'endloop','break']
 
     def __init__(self, lines):
         self.funclose =  [] # List of addresses where functions are closed
@@ -35,7 +35,7 @@ class Assembler:
                 params = ''
                 if len(tokens) > 1:
                     params = line.strip().split(maxsplit=1)[1]
-                if tokens[0] == self.TOK_LOOP:
+                if tokens[0] in self.TOK_LOOP:
                     loop_stack.append(len(self.instr))
                 self.instr.append((tokens[0], (params, i)))
 
@@ -43,7 +43,7 @@ class Assembler:
                 params = ''
                 if len(tokens) > 1:
                     params = line.strip().split(maxsplit=1)[1]
-                if tokens[0] == self.TOK_LOOP:
+                if tokens[0] in self.TOK_LOOP:
                     loop_stack.append(len(self.instr))
                 self.instr.append((tokens[0], (params, i)))
 
@@ -78,7 +78,7 @@ class Assembler:
                     # append address to list of function endings for later consistency check
                     self.funclose.append(len(self.instr))
 
-                if tokens[0] == ')':
+                if tokens[0] == ')' or tokens[0] == 'endloop':
                     if len(loop_stack) == 0:
                         raise SyntaxError('Redundant \')\' in line ' + str(i+1))
                     loopclose.update({loop_stack.pop(): len(self.instr)})
@@ -95,8 +95,8 @@ class Assembler:
                         raise SyntaxError('Syntax error in line ' + str(i+1))
                 else:
                     raise SyntaxError('Invalid identifier: ' + tokens[0] + ' (in line: ' + str(i+1) + ')')
-        if len(loop_stack) != 0:
-            raise SyntaxError('Unexpected EOF. Unclosed Loop. Missing \')\'')
+        #if len(loop_stack) != 0:
+        #        raise SyntaxError('Unexpected EOF. Unclosed Loop. Missing \')\'')
 
         return AsmCtx(functions, loopclose, labels)
 
