@@ -14,6 +14,12 @@ from bignum_lib.instructions import ICall
 from bignum_lib.instructions_ot import IOtBeq
 from bignum_lib.instructions_ot import IOtBne
 from bignum_lib.instructions import IBranch
+from bignum_lib.instructions_ot import IOtLui
+from bignum_lib.instructions_ot import IOtAddi
+from bignum_lib.instructions import IMovi
+
+def handle_movi_combined(ins1, ins2):
+    return
 
 
 def main():
@@ -30,27 +36,56 @@ def main():
         exit()
 
     """Load binary executable from file"""
-    ins_objects, ctx = ins_objects_from_asm_file(infile)
+    ins_objects, ctx, _ = ins_objects_from_asm_file(infile)
     infile.close()
 
     ins_objects_push = [0]*len(ins_objects)
+    ins_objects_len = [1] * len(ins_objects)
 
     otbn_ins_obj_list = []
 
+    ignore_next = False
     for idx, item in enumerate(ins_objects):
+        if ignore_next:
+            ignore_next = False
+            continue
+
+        # The movi instruction is a special case, since two (subsequent) instructions have to be considered together
+        '''
+        if isinstance(item, IMovi):
+            if idx != len(ins_objects) - 1:
+                if isinstance(ins_objects[idx+1], IMovi):
+                    if item.rd == ins_objects[idx+1].rd and item.fun == ins_objects[idx+1].fun:
+                        if item.slice != ins_objects[idx+1].slice:
+                            # two subsequent movi instructions are adressing the same limb, one the lower 16b, one
+                            # the upper 16b -> Handle them together to be replaced by one single combination of
+                            # ADDI and LUI
+                            logging.info('Combining two movi instructions (Address '
+                                         + str(idx) + ' and ' + str(idx+1) + ').')
+                            handle_movi_combined(item, ins_objects[idx+1])
+                            otbn_ins_obj = item.convert_otbn(idx)
+                            otbn_ins_obj_list.extend(otbn_ins_obj)
+                            ignore_next = True
+                            continue'''
+
         otbn_ins_obj = item.convert_otbn(idx)
         if otbn_ins_obj:
             otbn_ins_obj_list.extend(otbn_ins_obj)
             if len(otbn_ins_obj) > 1:
+                ins_objects_len[idx] = len(otbn_ins_obj)
                 ins_objects_push[idx+1:] = [i + len(otbn_ins_obj) - 1 for i in ins_objects_push[idx+1:]]
         else:
             otbn_ins_obj_list.append(item)
+
+    #for item in otbn_ins_obj_list:
+    #    print(item)
 
     # create list of new loopranges
     loopranges_otbn = []
     # iterate over existing loopranges and see if they have been relocated
     for item in ctx.loopranges:
-        loopranges_otbn.append(range(item[0]+ins_objects_push[item[0]], item[-1] + ins_objects_push[item[-1]]))
+        # we have to consider that the last instruction in a loop is now possibly longer than 1 instruction
+        loopranges_otbn.append(range(item[0]+ins_objects_push[item[0]], item[-1] + ins_objects_push[item[-1]] + ins_objects_len[item[-1]]-1))
 
     # find loop instructions and adjust them
     for item in loopranges_otbn:
@@ -142,7 +177,7 @@ def main():
     ctx.labels = labels_otbn
 
     disassembler = Disassembler.from_ins_objects_and_context(otbn_ins_obj_list, ctx)
-    asm_lines = disassembler.create_assembly(format='otbn')
+    asm_lines = disassembler.create_assembly(opt_address=True, format='otbn')
     for item in asm_lines:
         print(item)
 
