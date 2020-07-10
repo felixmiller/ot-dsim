@@ -35,6 +35,7 @@ from . instructions_ot import IOtBne
 from . instructions_ot import IOtBeq
 from . instructions_ot import IOtCsrrs
 from . instructions_ot import IOtCsrrw
+from . instructions_ot import IOtLui
 
 import logging
 
@@ -352,7 +353,7 @@ class AsmCtx:
             if not fun_str.startswith('&'):
                 raise SyntaxError('Missing \'&\' in function name parameter')
             dest_addr = self.functions.get(fun_str[1:])[0]
-        if not dest_addr:
+        if dest_addr is None:
             raise Exception('Undefined function: ' + fun_str[1:])
         return dest_addr
 
