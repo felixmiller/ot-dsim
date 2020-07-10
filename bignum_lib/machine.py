@@ -352,13 +352,16 @@ class Machine(object):
         raise Exception('Invalid CSR')
 
     def set_csr(self, csr, val):
+        """Set a CSR"""
         if csr == self.CSR_FLAG:
             self.set_flags_as_bin(val & 0xFF)
             return
         if (csr & 0xff8) == self.CSR_MOD_BASE:
-            return self.set_reg_limb('mod', csr & 0x7, val)
+            self.set_reg_limb('mod', csr & 0x7, val)
+            return
         if csr == self.CSR_RND:
-            return self.set_reg_limb('rnd', 0, val)
+            self.set_reg_limb('rnd', 0, val)
+            return
         raise Exception('Invalid CSR')
 
     def get_wsr(self, wsr):
