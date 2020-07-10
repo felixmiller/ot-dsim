@@ -1657,6 +1657,9 @@ class ILdi(GIWideImm):
         ret += cls.enc_idx(idx)
         return cls(ret, ctx.ins_ctx)
 
+    def convert_otbn(self, addr):
+        return [IOtAddi(3, 0, self.rd, self.ctx), IBnLid(3, 0, 0, 0, self.idx, self.ctx)]
+
     def execute(self, m):
         m.set_reg(self.rd, m.get_dmem(self.idx))
         trace_str = self.get_asm_str()[1]
@@ -1875,6 +1878,14 @@ class IMovi(GIWideImm):
         ret += cls.enc_op(cls.OP)
         return cls(ret, ctx.ins_ctx)
 
+    def convert_otbn(self, addr, next_ins=None):
+        return None
+        lower_12b = 0
+        upper_20b = 0
+        addi_ins = IOtAddi(self.rd, 0, lower_12b, self.ctx)
+        lui_ins = IOtLui(self.rd, upper_20b, self.ctx)
+        return [addi_ins, lui_ins]
+
     def execute(self, m):
         m.stat_record_movi(self.imm.bit_length())
         m.set_reg_half_limb(self.rd, self.fun, self.imm, self.slice)
@@ -1939,16 +1950,15 @@ class ISt(GIStd):
         return cls(ret, ctx.ins_ctx)
 
     def convert_otbn(self, addr):
-        # conversion of dual increment not yet supported
-        if self.inc_src and self.inc_dst:
-            logging.warning("Conversion of dual increment st instruction not supported. Leaving unchanged")
-            return None
         xd = self.limb_dst + 16  # dmp currently mapped on x16 to x23
         xs = self.limb_src + 8   # rfp currently mapped on x8 to x15
         offset = 0
         logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xd))
         logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xs))
-        return [IBnSid(xs, self.inc_src, xd, self.inc_dst, offset, self.ctx)]
+        if self.inc_src and self.inc_dst:
+            return [IBnSid(xs, 1, xd, 0, offset, self.ctx), IOtAddi(xd, xd, 1, self.ctx)]
+        else:
+            return [IBnSid(xs, self.inc_src, xd, self.inc_dst, offset, self.ctx)]
 
     def execute(self, m):
         sptr = m.get_reg_limb('rfp', self.limb_src) & m.reg_idx_mask
@@ -2031,16 +2041,15 @@ class ILd(GIStd):
 
     def convert_otbn(self, addr):
         if self.MNEM.get(self.dmem_src) == 'ld':
-            # conversion of dual increment not yet supported
-            if self.inc_src and self.inc_dst:
-                logging.warning("Conversion of dual increment ld instruction not supported. Leaving unchanged")
-                return None
             xd = self.limb_dst + 8   # dmp currently mapped on x8 to x15
             xs = self.limb_src + 16  # dmp currently mapped on x16 to x23
             offset = 0
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xd))
             logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xs))
-            return [IBnLid(xd, self.inc_dst, xs, self.inc_src, offset, self.ctx)]
+            if self.inc_src and self.inc_dst:
+                return [IBnLid(xd, 1, xd, 0, offset, self.ctx), IOtAddi(xs, xs, 1, self.ctx)]
+            else:
+                return [IBnLid(xd, self.inc_dst, xs, self.inc_src, offset, self.ctx)]
         return None
 
     def execute(self, m):
