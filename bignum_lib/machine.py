@@ -408,6 +408,13 @@ class Machine(object):
             print('Warning: reading from uninitialized dmem memory address: ' + hex(address))
         return self.dmem[address]
 
+    def get_dmem_otbn(self, address):
+        """Get value for a dmem address in otbn format"""
+        dmem_addr = address//8
+        limb = address%8
+        self.__check_dmem_addr(dmem_addr)
+        return self.__get_limb_from_reg_val(limb, self.dmem[dmem_addr])
+
     def set_dmem(self, address, value):
         """Set value at a dmem address"""
         self.__check_dmem_addr(address)
