@@ -930,7 +930,7 @@ class Machine(object):
                 # no loops left, pop the loop stack but continue without jump
                 self.pop_loop_stack()
 
-        if jump_addr:
+        if jump_addr is not None:
             if jump_addr < 0 or jump_addr >= len(self.imem):
                 raise Exception('Invalid jump address')
             self.set_pc(jump_addr)
