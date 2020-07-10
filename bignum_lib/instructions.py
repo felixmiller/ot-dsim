@@ -362,7 +362,7 @@ class AsmCtx:
         if len(label_str.split()) > 1:
             raise SyntaxError('Unexpected separator in label')
         dest_addr = self.labels.get(label_str)
-        if not dest_addr:
+        if dest_addr is None:
             raise Exception('Undefined label: ' + label_str)
         return dest_addr
 
