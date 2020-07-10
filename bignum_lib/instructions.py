@@ -912,7 +912,7 @@ class IAdd(GIStdShift):
             raise Exception('Invalid opcode')
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IAddm(GIStdShift):
@@ -936,7 +936,7 @@ class IAddm(GIStdShift):
         m.set_z_m_l(res)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ISub(GIStdShift):
@@ -1050,7 +1050,7 @@ class ISub(GIStdShift):
             raise Exception('Invalid opcode')
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ISubm(GIStdShift):
@@ -1074,7 +1074,7 @@ class ISubm(GIStdShift):
         m.set_z_m_l(res & m.xlen_mask)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IMul128(GIStd):
@@ -1142,7 +1142,7 @@ class IMul128(GIStd):
         res = op1*op2
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -1173,7 +1173,7 @@ class IAnd(GIStdShift):
         m.set_z_m_l(res)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOr(GIStdShift):
@@ -1200,7 +1200,7 @@ class IOr(GIStdShift):
         m.set_z_m_l(res)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class INot(GIStdShift):
@@ -1239,7 +1239,7 @@ class INot(GIStdShift):
         m.set_z_m_l(res)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IXor(GIStdShift):
@@ -1267,7 +1267,7 @@ class IXor(GIStdShift):
         m.set_z_m_l(res & m.xlen_mask)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ISel(GIStd):
@@ -1348,7 +1348,7 @@ class ISel(GIStd):
             m.set_reg(self.rd, m.get_reg(self.rs2))
 
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IRshi(GIStd):
@@ -1397,7 +1397,7 @@ class IRshi(GIStd):
         res = (conc >> self.imm) & m.xlen_mask
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ICmp(GIStd):
@@ -1463,7 +1463,7 @@ class ICmp(GIStd):
             raise Exception('Invalid opcode')
 
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -1535,7 +1535,7 @@ class ILdSt1(GIStd):
         else:
             raise Exception('Invalid opcode')
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ILdSt2(GIStd):
@@ -1602,7 +1602,7 @@ class ILdSt2(GIStd):
         else:
             raise Exception('Invalid opcode')
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ILdi(GIWideImm):
@@ -1660,7 +1660,7 @@ class ILdi(GIWideImm):
     def execute(self, m):
         m.set_reg(self.rd, m.get_dmem(self.idx))
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ISti(GIWideImm):
@@ -1718,7 +1718,7 @@ class ISti(GIWideImm):
     def execute(self, m):
         m.set_dmem(self.idx, m.get_reg(self.rd))
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IMovLdr(GIStd):
@@ -1825,7 +1825,7 @@ class IMovLdr(GIStd):
         else:
             raise Exception('InvalidOpcode')
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IMovi(GIWideImm):
@@ -1879,7 +1879,7 @@ class IMovi(GIWideImm):
         m.stat_record_movi(self.imm.bit_length())
         m.set_reg_half_limb(self.rd, self.fun, self.imm, self.slice)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ISt(GIStd):
@@ -1964,7 +1964,7 @@ class ISt(GIStd):
 
         m.stat_record_wide_mem_op('st', self.inc_src, self.inc_dst)
 
-        return trace_str, False
+        return trace_str, None
 
 
 class ILd(GIStd):
@@ -2058,7 +2058,7 @@ class ILd(GIStd):
         # XXX: assert on ldc
         m.stat_record_wide_mem_op('ld', self.inc_src, self.inc_dst)
 
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -2087,7 +2087,7 @@ class INop(GIStdNoParm):
 
     def execute(self, m):
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class ISigini(GIStd):
@@ -2119,7 +2119,7 @@ class ISigini(GIStd):
 
     def execute(self, m):
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -2303,7 +2303,7 @@ class IBranch(GIMidImm):
             raise Exception('Invalid opcode')
         if branch:
             return trace_str, self.imm
-        return trace_str, False
+        return trace_str, None
 
 
 class ILoop(GIMidImm):
@@ -2419,7 +2419,7 @@ class ILoop(GIMidImm):
         m.push_loop_stack(self.cnt-1, self.len+m.get_pc(), m.get_pc()+1)
         m.stat_record_loop(m.get_pc(), self.len, len(m.loop_stack), self.cnt)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 if __name__ == "__main__":
