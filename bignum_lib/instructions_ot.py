@@ -14,11 +14,11 @@ NUM_GPRS = Machine.NUM_GPRS
 
 def _get_imm(asm_str):
     """return int for immediate string and check proper formatting"""
-    if len(asm_str.split()) > 1:
+    if len(asm_str.strip().split()) > 1:
         raise SyntaxError('Unexpected separator in immediate')
-    if not asm_str.isdigit():
+    if not asm_str.strip().isdigit():
         raise SyntaxError('Immediate not a number')
-    return int(asm_str)
+    return int(asm_str.strip())
 
 
 def _get_single_reg(asm_str):
@@ -224,33 +224,36 @@ def _get_two_regs_and_imm_with_flag_group(asm_str):
     return rd, rs, imm, flag_group
 
 
-def _get_imm_with_opening_par(asm_str):
-    if not asm_str.strip().endswith('('):
-        raise SyntaxError('Missing \'(\'')
-    imm = asm_str.strip()[:-1].strip()
-    if not imm.isdigit():
-        raise SyntaxError('immediate not a number')
-    return int(imm)
-
-
-def _get_two_imm_with_opening_par(asm_str):
-    """decode the BN format with two immediates and closing parenthesis at the end"""
+def _get_two_imm(asm_str):
+    """decode the BN format with two immediates"""
     substr = asm_str.split(',')
     if not (len(substr) == 2):
         raise SyntaxError('Syntax error in parameter set. Expected two immediates')
-    if not substr[0].strip().isdigit():
-        raise SyntaxError('first immediate not a number')
-    imm = _get_imm_with_opening_par(substr[1])
-    return int(substr[0].strip()), imm
+    imm1 = _get_imm(substr[0].strip())
+    imm2 = _get_imm(substr[1].strip())
+    return imm1, imm2
 
 
-def _get_gpr_and_imm_with_opening_par(asm_str):
-    """decode the BN format with gpr and immediate and opening parenthesis at the end"""
+def _get_gpr_and_imm(asm_str):
+    """decode the BN format with gpr and immediate"""
     substr = asm_str.split(',')
     if not (len(substr) == 2):
         raise SyntaxError('Syntax error in parameter set. Expected GPR and immediate')
     gpr = _get_single_gpr(substr[0].strip().lower())
-    imm = _get_imm_with_opening_par(substr[1])
+    imm = _get_imm(substr[1])
+    return gpr, imm
+
+
+def _get_gpr_and_optional_imm(asm_str):
+    """decode the BN format with gpr and optional immediate"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 1 or len(substr) == 2):
+        raise SyntaxError('Syntax error in parameter set. Expected GPR and optional immediate')
+    gpr = _get_single_gpr(substr[0].strip().lower())
+    if len(substr) == 2:
+        imm = _get_imm(substr[1])
+    else:
+        imm = None
     return gpr, imm
 
 
@@ -284,6 +287,17 @@ def _get_gpr_imm_gpr(asm_str):
     imm = _get_imm(substr[1].strip())
     gpr2 = _get_single_gpr(substr[2].strip().lower())
     return gpr1, imm, gpr2
+
+
+def _get_wdr_imm_wd(asm_str):
+    """decode the BN format with wdr followed by immediate followed by wdr"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 3):
+        raise SyntaxError('Syntax error in parameter set. Expected two GPRs and immediate')
+    wrd1 = _get_single_reg(substr[0].strip().lower())
+    imm = _get_imm(substr[1].strip())
+    wrd2 = _get_single_reg(substr[2].strip().lower())
+    return wrd1, imm, wrd2
 
 
 def _get_two_gprs_with_inc(asm_str):
@@ -328,6 +342,15 @@ def _get_two_gprs_with_inc_and_offset(asm_str):
     x2, inc_x2, offset = _get_single_inc_gpr_with_offset(substr[1].strip())
     return x1, inc_x1, x2, inc_x2, offset
 
+
+def _get_two_gprs_with_offset(asm_str):
+    """decode standard format with two GPRs and offset (e.g.: "x20, 128(x21)"""
+    substr = asm_str.split(',')
+    if len(substr) != 2:
+        raise SyntaxError('Syntax error in parameter set. Expected two GPR references')
+    x1 = _get_single_gpr(substr[0].strip())
+    x2, offset = _get_single_gpr_with_offset(substr[1].strip())
+    return x1, offset, x2
 
 
 def _get_single_reg(asm_str):
@@ -394,6 +417,21 @@ def _get_single_inc_gpr_with_offset(asm_str):
     gpr, inc_gpr = _get_single_inc_gpr(substr[1][:-1].strip().lower())
     return gpr, inc_gpr, offset
 
+
+def _get_single_gpr_with_offset(asm_str):
+    """returns a single GPR with offset from string (e.g "128(x5)")"""
+    if len(asm_str.split()) > 1:
+        raise SyntaxError('Unexpected separator in reg reference')
+    if not asm_str.lower().endswith(')'):
+        raise SyntaxError('Missing \')\'  at end of GPR with offset reference')
+    substr = asm_str.split('(')
+    if not len(substr) == 2:
+        raise SyntaxError('Malformed GPR reference with offset')
+    if not substr[0].isdigit():
+        raise SyntaxError('Offset reference not a number')
+    offset = int(substr[0])
+    gpr = _get_single_gpr(substr[1][:-1].strip().lower())
+    return gpr, offset
 
 #############################################
 #            Instruction Factory            #
