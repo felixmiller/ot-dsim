@@ -16,6 +16,7 @@ class Assembler:
         self.funclose =  [] # List of addresses where functions are closed
         self.instr = [] # the program (mnem, (param_string, line))
         self.ins_objects = []
+        self.breakpoints = []
         self.ins_fac = InstructionFactory()
         self.ins_fac_ot = InstructionFactoryOt()
         self.lines = lines
@@ -82,6 +83,9 @@ class Assembler:
                     if len(loop_stack) == 0:
                         raise SyntaxError('Redundant \')\' in line ' + str(i+1))
                     loopclose.update({loop_stack.pop(): len(self.instr)})
+
+                if tokens[0] == 'break':
+                    self.breakpoints.append(len(self.instr))
 
             # comments
             elif tokens[0].strip().startswith('*') or tokens[0].strip().startswith('/'):
