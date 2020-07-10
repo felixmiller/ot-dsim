@@ -95,7 +95,7 @@ class Machine(object):
             'op': op,
         })
 
-    def __init__(self, dmem, imem, s_addr=0, stop_addr=None, ctx=None):
+    def __init__(self, dmem, imem, s_addr=0, stop_addr=None, ctx=None, breakpoints=None):
         self.finishFlag = False
         if self.XLEN % (self.LIMBS * 2):
             raise Exception('XLEN must be divisible by LIMBS*2')
@@ -112,6 +112,10 @@ class Machine(object):
         self.gpr_mask = 2**self.GPR_WIDTH - 1
         self.ctx = ctx
         self.reset(dmem, imem, s_addr, stop_addr, clear_regs=True)
+
+        if breakpoints:
+            for item in breakpoints:
+                self.toggle_breakpoint(item)
 
         self.stats = {}
 
