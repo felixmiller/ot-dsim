@@ -770,7 +770,7 @@ class IBnAdd(GInsBnShift):
         self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnSub(GInsBnShift):
@@ -794,7 +794,7 @@ class IBnSub(GInsBnShift):
         self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res  & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnCmp(GInsBnShift):
@@ -817,7 +817,7 @@ class IBnCmp(GInsBnShift):
         res = (m.get_reg(self.rs1) - rs2op)
         self.exec_set_all_flags(res, m)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnAddc(GInsBnShift):
@@ -841,7 +841,7 @@ class IBnAddc(GInsBnShift):
         self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnSubb(GInsBnShift):
@@ -865,7 +865,7 @@ class IBnSubb(GInsBnShift):
         self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnCmpb(GInsBnShift):
@@ -888,7 +888,7 @@ class IBnCmpb(GInsBnShift):
         res = (m.get_reg(self.rs1) - rs2op - int(self.exec_get_carry(m)))
         self.exec_set_all_flags(res, m)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnAddi(GInsBnImm):
@@ -911,7 +911,7 @@ class IBnAddi(GInsBnImm):
         self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnSubi(GInsBnImm):
@@ -934,7 +934,7 @@ class IBnSubi(GInsBnImm):
         self.exec_set_all_flags(res, m)
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnAddm(GInsBnMod):
@@ -958,7 +958,7 @@ class IBnAddm(GInsBnMod):
             res = res - m.get_reg('mod')
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnSubm(GInsBnMod):
@@ -982,7 +982,7 @@ class IBnSubm(GInsBnMod):
             res = m.get_reg('mod') + res
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnMulh(GInsBn):
@@ -1026,7 +1026,7 @@ class IBnMulh(GInsBn):
         res = op1*op2
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -1054,7 +1054,7 @@ class IBnAnd(GInsBnShift):
         res = (m.get_reg(self.rs1) & rs2op) & m.xlen_mask
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnOr(GInsBnShift):
@@ -1078,7 +1078,7 @@ class IBnOr(GInsBnShift):
         self.exec_set_zml_flags(res, m)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnXor(GInsBnShift):
@@ -1102,7 +1102,7 @@ class IBnXor(GInsBnShift):
         self.exec_set_zml_flags(res, m)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 
@@ -1142,7 +1142,7 @@ class IBnNot(GIns):
         res = (~rs2op) & m.xlen_mask
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnRshi(GInsBn):
@@ -1173,7 +1173,7 @@ class IBnRshi(GInsBn):
         res = (conc >> self.shift_bits) & m.xlen_mask
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnSel(GInsBn):
@@ -1205,7 +1205,7 @@ class IBnSel(GInsBn):
         res = m.get_reg(self.rs1) if flag_val else m.get_reg(self.rs2)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -1234,7 +1234,7 @@ class IBnMov(GIns):
     def execute(self, m):
         m.set_reg(self.rd, m.get_reg(self.rs))
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnMovr(GInsIndReg):
@@ -1251,7 +1251,7 @@ class IBnMovr(GInsIndReg):
         m.set_reg(dst_wdr, m.get_reg(src_wdr))
         super().exec_inc(m)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnLid(GInsIndLs):
@@ -1263,12 +1263,13 @@ class IBnLid(GInsIndLs):
         super().__init__(x1, inc_x1, x2, inc_x2, offset, ctx)
 
     def execute(self, m):
+
         dst_wdr = m.get_gpr(self.x1)
         dmem_addr = self.offset + (m.get_gpr(self.x2))
         m.set_reg(dst_wdr, m.get_dmem(dmem_addr))
         super().exec_inc(m)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IBnSid(GInsIndLs):
@@ -1342,7 +1343,7 @@ class IOtLoopi(GIns):
     def execute(self, m):
         m.push_loop_stack(self.iter - 1, self.len + m.get_pc(), m.get_pc() + 1)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtLoop(GIns):
@@ -1379,7 +1380,7 @@ class IOtLoop(GIns):
         iter = m.get_gpr(self.xiter)
         m.push_loop_stack(iter - 1, self.len + m.get_pc(), m.get_pc() + 1)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 #############################################
@@ -1411,7 +1412,7 @@ class IOtGpr(GIns):
         res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtImm(GIns):
@@ -1493,7 +1494,7 @@ class IOtAdd(IOtGpr):
         res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtAddi(IOtImm):
@@ -1505,7 +1506,7 @@ class IOtAddi(IOtImm):
         res = m.get_gpr(self.xs) + self.imm
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtSub(IOtGpr):
@@ -1517,7 +1518,7 @@ class IOtSub(IOtGpr):
         res = m.get_gpr(self.xs1) - m.get_gpr(self.xs2)
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtAnd(IOtGpr):
@@ -1529,7 +1530,7 @@ class IOtAnd(IOtGpr):
         res = m.get_gpr(self.xs1) & m.get_gpr(self.xs2)
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtAndi(IOtImm):
@@ -1541,7 +1542,7 @@ class IOtAndi(IOtImm):
         res = m.get_gpr(self.xs) & self.imm
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtOr(IOtGpr):
@@ -1553,7 +1554,7 @@ class IOtOr(IOtGpr):
         res = m.get_gpr(self.xs1) | m.get_gpr(self.xs2)
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtOri(IOtImm):
@@ -1565,7 +1566,7 @@ class IOtOri(IOtImm):
         res = m.get_gpr(self.xs) | self.imm
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtXor(IOtGpr):
@@ -1577,7 +1578,7 @@ class IOtXor(IOtGpr):
         res = m.get_gpr(self.xs1) ^ m.get_gpr(self.xs2)
         m.set_gpr(self.xd, res & m.gpr_mask)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtXori(IOtImm):
@@ -1694,7 +1695,7 @@ class IOtCsrrs(IOtCsr):
         csr_new = csr_val | m.get_gpr(self.grs)
         m.set_csr(self.csr, csr_new)
         trace_str = self.get_asm_str()[1]
-        return trace_str, False
+        return trace_str, None
 
 
 class IOtCsrrw(IOtCsr):
