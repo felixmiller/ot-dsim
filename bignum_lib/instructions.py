@@ -2256,7 +2256,6 @@ class IBranch(GIMidImm):
             ins_branch = IOtBne(2, 0, offset, addr, self.ctx, self.label)
             return [ins_read_csr, ins_andi, ins_branch]
         if self.MNEM.get(self.funb) == 'bl':
-            #return None
             ins_read_csr = IOtCsrrs(2, Machine.CSR_FLAG, 0, self.ctx)
             ins_andi = IOtAndi(2, 2, 2, self.ctx)
             ins_branch = IOtBne(2, 0, offset, addr, self.ctx, self.label)
