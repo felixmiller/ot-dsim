@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from . instructions import *
+from . instructions_ot import *
 
 
 class Disassembler:
@@ -93,8 +94,8 @@ class Disassembler:
                         opt_code=False, opt_defines=False, format=None):
         """create assembly from instruction objects"""
         for i, item in enumerate(self.ins_objects):
-            if isinstance(item, ILoop):
-                self.loopendstack.append(item.get_len() + i)
+            if isinstance(item, ILoop) or isinstance(item, IOtLoop) or isinstance(item, IOtLoopi):
+                self.loopendstack.append(item.len + i)
 
             if i in self.ctx.functions and format != 'otbn':
                 fun_len = 0
@@ -132,7 +133,7 @@ class Disassembler:
                 if format=='otbn':
                     lab += '\n'
                     if label in self.ctx.functions.values():
-                        lab += '/**\n* Function ' + label + '\n*/\n'
+                        lab += '/**\n * Function ' + label + '\n */\n'
                 if opt_code:
                     lab += '   /*'
                 lab += label + ':'
@@ -152,13 +153,16 @@ class Disassembler:
                 asm += ' */'
             self.asm_lines.append(asm)
             if i in self.loopendstack:
-                if opt_code:
-                    self.asm_lines.append('	/*		   ) */')
+                if format=='otbn':
+                    self.asm_lines.append('endloop')
                 else:
-                    if opt_address:
-                        self.asm_lines.append('       )')
+                    if opt_code:
+                        self.asm_lines.append('	/*		   ) */')
                     else:
-                        self.asm_lines.append(')')
+                        if opt_address:
+                            self.asm_lines.append('       )')
+                        else:
+                            self.asm_lines.append(')')
             if (i == len(self.ins_objects) - 1) and (format != 'otbn'):
                 if opt_code:
                     self.asm_lines.append('/* } */')
