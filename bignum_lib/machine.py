@@ -25,6 +25,8 @@ class Machine(object):
     CSR_FLAG = 0x7C0
     CSR_MOD_BASE = 0x7D0
     CSR_RNG = 0xFC0
+    WSR_MOD = 0x1
+    WSR_RND = 0x2
 
     # breakpoints is dictionary with break addresses being keys and
     # values are tuples of number of passes required and the pass counter
@@ -354,6 +356,24 @@ class Machine(object):
         if csr == self.CSR_RND:
             return self.set_reg_limb('rnd', 0, val)
         raise Exception('Invalid CSR')
+
+    def get_wsr(self, wsr):
+        """Return a WSR"""
+        if wsr == self.WSR_MOD:
+            return self.get_reg('mod')
+        if wsr == self.WSR_RND:
+            return self.get_reg('rnd')
+        raise Exception('Invalid WSR')
+
+    def set_wsr(self, wsr, val):
+        """Set a WSR"""
+        if wsr == self.WSR_MOD:
+            self.set_reg('mod', val)
+            return
+        if wsr == self.WSR_RND:
+            # do nothing, since RND WSR is not writable according to spec
+            return
+        raise Exception('Invalid WSR')
 
     def inc_gpr(self, gpr):
         """Increment a GPR value"""
