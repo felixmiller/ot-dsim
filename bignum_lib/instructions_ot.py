@@ -175,7 +175,7 @@ def _get_wdr_with_halfw_sel_two_wdr_with_quadw_sel_and_imm(asm_str):
     return wrd, wrd_hw_sel, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, imm
 
 
-def _get_wdr_with_halfw_sel_two_wdr_with_quadw_sel_and_imm(asm_str):
+def _get_two_wdr_with_quadw_sel_and_imm(asm_str):
     """decode the BN format for quarter word sel for two wdrs and imm"""
     substr = asm_str.split(',')
     if not len(substr) == 3:
@@ -980,6 +980,102 @@ class IBnSubm(GInsBnMod):
         m.set_reg(self.rd, res & m.xlen_mask)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
+
+
+class GInsBnMulqacc(GInsBn):
+    """Quarter-word Multiply and Accumulate base instruction"""
+
+    def __init__(self, wrd, wrd_hw_sel, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm, ctx):
+        self.wrd_hw_sel = wrd_hw_sel
+        self.wrs1_qw_sel = wrs1_qw_sel
+        self.wrs2_qw_sel = wrs2_qw_sel
+        self.imm = acc_shift_imm
+        super().__init__(wrd, wrs1, wrs2, None, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM
+        if self.rd is not None:
+            asm_str =  ' w' + str(self.rd)
+            if self.wrd_hw_sel == 'upper':
+                asm_str += 'U'
+            else:
+                asm_str += 'L'
+        asm_str += ', w' + str(self.rs1) + '.' + str(self.wrs1_qw_sel)
+        asm_str += ', w' + str(self.rs2) + '.' + str(self.wrs2_qw_sel)
+        asm_str += ', ' + str(self.imm)
+        return self.hex_str, asm_str, self.malformed
+
+
+class IBnMulqacc(GInsBnMulqacc):
+    """Quarter-word Multiply and Accumulate
+    BN.MULQACC <wrs1>.<wrs1_qwsel>, <wrs2>.<wrs2_qwsel>, <acc_shift_imm>"""
+
+    MNEM = 'BN.MULQACC'
+
+    def execute(self, m):
+        op1 = m.get_reg_qw(self.rs1, self.wrs1_qw_sel)
+        op2 = m.get_reg_qw(self.rs2, self.wrs2_qw_sel)
+        res = (op1*op2) << self.imm
+        m.set_acc(m.get_acc() + res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm = \
+            _get_two_wdr_with_quadw_sel_and_imm(params)
+        return cls(None, None, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm, ctx.ins_ctx)
+
+
+class IBnMulqaccZ(GInsBnMulqacc):
+    """Quarter-word Multiply and Accumulate
+    BN.MULQACC <wrs1>.<wrs1_qwsel>, <wrs2>.<wrs2_qwsel>, <acc_shift_imm>"""
+
+    MNEM = 'BN.MULQACC.Z'
+
+    def execute(self, m):
+        m.set_acc(0)
+        op1 = m.get_reg_qw(self.rs1, self.wrs1_qw_sel)
+        op2 = m.get_reg_qw(self.rs2, self.wrs2_qw_sel)
+        res = (op1*op2) << (self.imm * 64)
+        m.set_acc(m.get_acc() + res)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm = \
+            _get_two_wdr_with_quadw_sel_and_imm(params)
+        return cls(None, None, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm, ctx.ins_ctx)
+
+
+class IBnMulqaccSo(GInsBnMulqacc):
+    """Quarter-word Multiply and Accumulate
+    BN.MULQACC <wrs1>.<wrs1_qwsel>, <wrs2>.<wrs2_qwsel>, <acc_shift_imm>"""
+
+    MNEM = 'BN.MULQACC.SO'
+
+    def execute(self, m):
+        op1 = m.get_reg_qw(self.rs1, self.wrs1_qw_sel)
+        op2 = m.get_reg_qw(self.rs2, self.wrs2_qw_sel)
+        res = (op1*op2) << self.imm
+        m.set_acc(m.get_acc() + res)
+        shift_out = m.get_acc() & m.hw_mask
+        m.set_acc(m.get_acc() >> m.hw_width)
+        if self.wrd_hw_sel == 'lower':
+            m.set_reg_half_word(self.rd, 0, shift_out)
+        elif self.wrd_hw_sel == 'upper':
+            m.set_reg_half_word(self.rd, 1, shift_out)
+        else:
+            raise SyntaxError('Illegal half word indicator')
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        wrd, wrd_hw_sel, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm = \
+            _get_wdr_with_halfw_sel_two_wdr_with_quadw_sel_and_imm(params)
+        return cls(wrd, wrd_hw_sel, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, acc_shift_imm, ctx.ins_ctx)
 
 
 class IBnMulh(GInsBn):
