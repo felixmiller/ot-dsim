@@ -367,8 +367,6 @@ class AsmCtx:
         return dest_addr
 
     def get_loop_close_addr(self, addr):
-        if addr not in self.loopclose:
-            raise Exception('Internal error: loop closing not found')
         return self.loopclose.get(addr)
 
     def get_function_addr_dict(self):
