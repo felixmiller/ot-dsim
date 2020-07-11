@@ -551,7 +551,7 @@ class GIns(object):
 
 
 class GInsBn(GIns):
-    """Standard Bignum format BN.<ins> <rd>, <rs1>, <rs2>, FG<flag_group> """
+    """Standard Bignum format BN.<ins> <wrd>, <wrs1>, <wrs2>, FG<flag_group> """
 
     def __init__(self, rd, rs1, rs2, flag_group, ctx):
         self.rd = rd
@@ -581,7 +581,7 @@ class GInsBn(GIns):
 
 class GInsBnShift(GInsBn):
     """Standard Bignum format with immediate shift
-    BN.<ins> <rd>, <rs1>, <rs2>, FG<flag_group> [, <shift_type> <shift_bytes>B]"""
+    BN.<ins> <wrd>, <wrs1>, <wrs2>, FG<flag_group> [, <shift_type> <shift_bytes>B]"""
 
     def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
         self.shift_type = shift_type
@@ -589,7 +589,7 @@ class GInsBnShift(GInsBn):
         super().__init__(rd, rs1, rs2, flag_group, ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs1) + ', w' + str(self.rs2)
         if self.shift_type == 'right':
             asm_str += ' >> ' + str(self.shift_bytes*8)
         else:
@@ -616,14 +616,14 @@ class GInsBnShift(GInsBn):
 
 class GInsBnImm(GInsBn):
     """Standard Bignum format with one source register and immediate
-    BN.<ins> <rd>, <rs>, <imm>, [ FG<flag_group>]"""
+    BN.<ins> <wrd>, <wrs>, <imm>, [ FG<flag_group>]"""
 
     def __init__(self, rd, rs, imm, flag_group, ctx):
         self.imm = imm
         super().__init__(rd, rs, None, flag_group, ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', ' + str(self.imm)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs1) + ', ' + str(self.imm)
         if self.flag_group == 'extension':
             asm_str += ', FG1'
         return self.hex_str, asm_str, self.malformed
@@ -636,13 +636,13 @@ class GInsBnImm(GInsBn):
 
 class GInsBnMod(GInsBn):
     """Standard Bignum format for pseudo modulo operations
-    BN.<ins> <rd>, <rs1>, <rs2>"""
+    BN.<ins> <wrd>, <wrs1>, <wrs2>"""
 
     def __init__(self, rd, rs1, rs2, ctx):
         super().__init__(rd, rs1, rs2, None, ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs1) + ', w' + str(self.rs2)
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
@@ -729,7 +729,7 @@ class GInsWsr(GIns):
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.wrd) + ', ' + str(self.wsr) + ', r' + str(self.wrs)
+        asm_str = self.MNEM + ' w' + str(self.wrd) + ', ' + str(self.wsr) + ', w' + str(self.wrs)
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
@@ -1116,7 +1116,7 @@ class IBnNot(GIns):
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs)
         if self.shift_type == 'right':
             asm_str += ' >> ' + str(self.shift_bytes*8)
         else:
@@ -1152,7 +1152,7 @@ class IBnRshi(GInsBn):
         super().__init__(rd, rs1, rs2, None, ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs1) + ', w' + str(self.rs2)
         asm_str += ' >> ' + str(self.shift_bits)
         return self.hex_str, asm_str, self.malformed
 
@@ -1183,7 +1183,7 @@ class IBnSel(GInsBn):
         super().__init__(rd, rs1, rs2, flag_group, ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2) + ', '
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs1) + ', w' + str(self.rs2) + ', '
         if self.flag_group == 'extension':
             asm_str += 'FG1.'
         asm_str += self.flag.upper()
@@ -1220,7 +1220,7 @@ class IBnMov(GIns):
         super().__init__(ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs)
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
