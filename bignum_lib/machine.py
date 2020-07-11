@@ -101,6 +101,10 @@ class Machine(object):
             raise Exception('XLEN must be divisible by LIMBS*2')
         self.limb_width = int(self.XLEN / self.LIMBS)
         self.limb_mask = 2 ** self.limb_width - 1
+        self.qw_width = int(self.XLEN / 4)
+        self.qw_mask = 2 ** self.qw_width - 1
+        self.hw_width = int(self.XLEN / 2)
+        self.hw_mask = 2 ** self.hw_width - 1
         self.half_limb_width = int(self.XLEN / self.LIMBS / 2)
         self.half_limb_mask = 2 ** self.half_limb_width - 1
         self.xlen_mask = 2 ** self.XLEN - 1
@@ -157,6 +161,7 @@ class Machine(object):
         self.lc = 0
         self.rnd = 1
         self.pc = 0
+        self.acc = 0
         self.mod = 0
         self.r = []
         for i in range(self.NUM_REGS):
@@ -185,9 +190,24 @@ class Machine(object):
         if value < 0 or value > self.half_limb_mask:
             raise OverflowError
 
+    def __check_half_word_val(self, value):
+        """Check if half-word value is within bounds"""
+        if value < 0 or value > self.hw_mask:
+            raise OverflowError
+
     def __check_limb_idx(self, idx):
         """Check if limb index is within bounds"""
         if idx < 0 or idx >= self.LIMBS:
+            raise IndexError
+
+    def __check_hw_idx(self, idx):
+        """Check if half word index is within bounds"""
+        if idx < 0 or idx >= 2:
+            raise IndexError
+
+    def __check_qw_idx(self, idx):
+        """Check if quarter word index is within bounds"""
+        if idx < 0 or idx >= 4:
             raise IndexError
 
     def __check_dmem_addr(self, addr):
@@ -205,6 +225,12 @@ class Machine(object):
         self.__check_limb_idx(lidx)
         self.__check_reg_val(regval)
         return (regval >> lidx * self.limb_width) & self.limb_mask
+
+    def __get_quarter_word_from_reg_val(self, qwidx, regval):
+        """Extract a specific quarter word from a register"""
+        self.__check_qw_idx(qwidx)
+        self.__check_reg_val(regval)
+        return (regval >> qwidx * self.qw_width) & self.qw_mask
 
     def __mod_limb_in_reg_val(self, lidx, regval, limbval):
         """Modify a specific limb in an register"""
@@ -226,6 +252,17 @@ class Machine(object):
         masked_reg = regval | mask
         masked_reg2 = masked_reg ^ mask
         reg = masked_reg2 | (halflimbval << ((lidx * 2 + bool(upper)) * self.half_limb_width))
+        return reg
+
+    def __mod_half_word_in_reg_val(self, hw_idx, regval, hw_val):
+        """Modify a specific half word in an register"""
+        self.__check_hw_idx(hw_idx)
+        self.__check_reg_val(regval)
+        self.__check_half_word_val(hw_val)
+        mask = self.hw_mask << (hw_idx * self.hw_width)
+        masked_reg = regval | mask
+        masked_reg2 = masked_reg ^ mask
+        reg = masked_reg2 | (hw_val << (hw_idx * self.hw_width))
         return reg
 
     @staticmethod
@@ -300,6 +337,14 @@ class Machine(object):
     def set_reg_half_limb(self, ridx, lidx, value, upper):
         """Set a single half limb of a register"""
         self.set_reg(ridx, self.__mod_half_limb_in_reg_val(lidx, self.get_reg(ridx), value, upper))
+
+    def get_reg_qw(self, ridx, qwidx):
+        """Get a quarter word from a register"""
+        return self.__get_quarter_word_from_reg_val(qwidx, self.get_reg(ridx))
+
+    def set_reg_half_word(self, ridx, hw_idx, value):
+        """Set a single limb in a register"""
+        self.set_reg(ridx, self.__mod_half_word_in_reg_val(hw_idx, self.get_reg(ridx), value))
 
     def set_gpr(self, gpr, value):
         """Set a GPR value"""
@@ -387,6 +432,14 @@ class Machine(object):
         if not (32 > gpr >= 0):
             raise Exception('Invalid GPR referenced')
         self.set_gpr(gpr, (self.get_gpr(gpr) + 1) & self.limb_mask)
+
+    def get_acc(self):
+        """Get current accumulator value"""
+        return self.acc
+
+    def set_acc(self, acc):
+        """Get current accumulator value"""
+        self.acc = acc
 
     def set_pc(self, pc):
         """Set the program counter"""
@@ -785,6 +838,7 @@ class Machine(object):
         print('rs - print special registers')
         print('ra - print all registers')
         print('x - print GPRs (OTBN only)')
+        print('m - print mul accumulator)')
         print('d [len] [start] - print dmem words')
         print('f  - print flags')
         print('ls - print loop stack')
@@ -841,6 +895,8 @@ class Machine(object):
                 print(self.get_all_reg_table(True))
             elif inp == 'x':
                 print(self.get_gprs())
+            elif inp == 'm':
+                print(hex(self.get_acc()))
             elif inp == 'f':
                 print(self.get_all_flags_table())
             elif inp == 'ls':
