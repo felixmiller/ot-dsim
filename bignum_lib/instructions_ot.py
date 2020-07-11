@@ -36,7 +36,22 @@ def _get_single_wdr_with_hw_sel(asm_str):
         hw_sel = 'upper'
     if asm_str[-2:].lower() == '.l':
         hw_sel = 'lower'
-    return int(asm_str[1:-1]), hw_sel
+    return int(asm_str[1:-2]), hw_sel
+
+
+def _get_single_wdr_with_qw_sel(asm_str):
+    """returns a single register from string with quad word select and check proper formatting (e.g "w5.2")"""
+    if len(asm_str.split()) > 1:
+        raise SyntaxError('Unexpected separator in reg reference')
+    if not asm_str.lower().startswith('w'):
+        raise SyntaxError('Missing \'w\' character at start of reg reference')
+    if not (asm_str.lower().endswith('.0') or asm_str.lower().endswith('.1') or asm_str.lower().endswith('.2')
+            or asm_str.lower().endswith('.3')):
+        raise SyntaxError('Missing quad word selection (\'.0\', \'.1\', \'.2\' or \'.3\') at end of reg reference')
+    if not asm_str[1:-2].isdigit():
+        raise SyntaxError('reg reference not a number')
+    qw_sel = int(asm_str[-1])
+    return int(asm_str[1:-2]), qw_sel
 
 
 def _get_single_shifted_wdr(asm_str):
@@ -146,6 +161,29 @@ def _get_three_wdr_with_two_half_word_sels(asm_str):
     wrs1, wrs1_hw_sel = _get_single_wdr_with_hw_sel(substr[1].strip())
     wrs2, wrs2_hw_sel = _get_single_wdr_with_hw_sel(substr[2].strip())
     return wrd, wrs1, wrs1_hw_sel, wrs2, wrs2_hw_sel
+
+
+def _get_wdr_with_halfw_sel_two_wdr_with_quadw_sel_and_imm(asm_str):
+    """decode the BN format for half word sel for first wdr, quater word sel for 2nd and 3rd wdr and imm"""
+    substr = asm_str.split(',')
+    if not len(substr) == 4:
+        raise SyntaxError('Syntax error in parameter set. Expected four reg references')
+    wrd, wrd_hw_sel = _get_single_wdr_with_hw_sel(substr[0].strip())
+    wrs1, wrs1_qw_sel = _get_single_wdr_with_qw_sel(substr[1].strip())
+    wrs2, wrs2_qw_sel = _get_single_wdr_with_qw_sel(substr[2].strip())
+    imm = _get_imm(substr[3].strip())
+    return wrd, wrd_hw_sel, wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, imm
+
+
+def _get_wdr_with_halfw_sel_two_wdr_with_quadw_sel_and_imm(asm_str):
+    """decode the BN format for quarter word sel for two wdrs and imm"""
+    substr = asm_str.split(',')
+    if not len(substr) == 3:
+        raise SyntaxError('Syntax error in parameter set. Expected three reg references')
+    wrs1, wrs1_qw_sel = _get_single_wdr_with_qw_sel(substr[0].strip())
+    wrs2, wrs2_qw_sel = _get_single_wdr_with_qw_sel(substr[1].strip())
+    imm = _get_imm(substr[2].strip())
+    return wrs1, wrs1_qw_sel, wrs2, wrs2_qw_sel, imm
 
 
 def _get_two_wdr(asm_str):
