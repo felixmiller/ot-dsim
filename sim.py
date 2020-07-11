@@ -50,7 +50,7 @@ def main():
         asm_mode = True
         try:
             asm_file = open(args.asm_file)
-            ins_objects, ins_ctx = ins_objects_from_asm_file(asm_file)
+            ins_objects, ins_ctx, breakpoints = ins_objects_from_asm_file(asm_file)
             asm_file.close()
         except IOError:
             print('Could not open file ' + args.asm_file)
@@ -99,7 +99,7 @@ def main():
         start_addr = 0
         print("Warning: No explicit start address given. Starting at Imem[0]")
 
-    machine = Machine(dmem, ins_objects, start_addr, stop_addr, ins_ctx)
+    machine = Machine(dmem, ins_objects, start_addr, stop_addr, ins_ctx, breakpoints=breakpoints)
 
     if args.init_break:
         machine.toggle_breakpoint(start_addr)
