@@ -26,6 +26,9 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     argparser = argparse.ArgumentParser(description='Dcrypto to OTBN assembly converter')
     argparser.add_argument('infile', help="Input Assembly file")
+    argparser.add_argument('-a', '--addresses',
+                           help='print address for each instruction',
+                           action='store_true')
     argparser.parse_args()
     args = argparser.parse_args()
 
@@ -177,7 +180,7 @@ def main():
     ctx.labels = labels_otbn
 
     disassembler = Disassembler.from_ins_objects_and_context(otbn_ins_obj_list, ctx)
-    asm_lines = disassembler.create_assembly(opt_address=True, format='otbn')
+    asm_lines = disassembler.create_assembly(opt_address=args.addresses, format='otbn')
     for item in asm_lines:
         print(item)
 
