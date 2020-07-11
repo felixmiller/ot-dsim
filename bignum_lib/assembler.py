@@ -9,7 +9,7 @@ from . instructions_ot import InstructionFactory as InstructionFactoryOt
 class Assembler:
     # Tokens
     TOK_FUNCTION = "function"
-    TOK_LOOP = ['loop', 'OT.LOOP', 'OT.LOOPI']
+    TOK_LOOP = ['loop', 'OT.LOOP', 'OT.LOOPI', 'LOOP', 'LOOPI']
     TOK_SPECIAL = [')', '}', 'endloop','break']
 
     def __init__(self, lines):
