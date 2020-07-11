@@ -22,23 +22,12 @@ def _get_imm(asm_str):
     return int(asm_str.strip())
 
 
-def _get_single_reg(asm_str):
-    """returns a single register from string and check proper formatting (e.g "r5")"""
+def _get_single_wdr_with_hw_sel(asm_str):
+    """returns a single register from string and check proper formatting (e.g "w5")"""
     if len(asm_str.split()) > 1:
         raise SyntaxError('Unexpected separator in reg reference')
-    if not asm_str.lower().startswith('r'):
-        raise SyntaxError('Missing \'r\' character at start of reg reference')
-    if not asm_str[1:].isdigit():
-        raise SyntaxError('reg reference not a number')
-    return int(asm_str[1:])
-
-
-def _get_single_reg_with_hw_sel(asm_str):
-    """returns a single register from string and check proper formatting (e.g "r5")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in reg reference')
-    if not asm_str.lower().startswith('r'):
-        raise SyntaxError('Missing \'r\' character at start of reg reference')
+    if not asm_str.lower().startswith('w'):
+        raise SyntaxError('Missing \'w\' character at start of reg reference')
     if not (asm_str.lower().endswith('u') or asm_str.lower().endswith('l')):
         raise SyntaxError('Missing \'L\' or \'U\' at end of reg reference')
     if not asm_str[1:-1].isdigit():
@@ -50,25 +39,8 @@ def _get_single_reg_with_hw_sel(asm_str):
     return int(asm_str[1:-1]), hw_sel
 
 
-def _get_single_limb(asm_str):
-    """returns a single limb with a potential increment (e.g "*6++" or "*7")"""
-    if len(asm_str.split()) > 1:
-        raise SyntaxError('Unexpected separator in limb reference')
-    if not asm_str.startswith('*'):
-        raise SyntaxError('Missing \'*\' character at start of limb reference')
-    if asm_str.endswith('++'):
-        inc = True
-        limb = asm_str[1:-2]
-    else:
-        inc = False
-        limb = asm_str[1:]
-    if not limb.isdigit():
-        raise SyntaxError('limb reference not a number')
-    return int(limb), inc
-
-
-def _get_single_shifted_reg(asm_str):
-    """decode a reg in (possible) shift notation (e.g. "r4 >> 128")"""
+def _get_single_shifted_wdr(asm_str):
+    """decode a reg in (possible) shift notation (e.g. "w4 >> 128")"""
     if '>>' in asm_str:
         shift_type = 'right'
         substr = asm_str.split('>>')
@@ -76,13 +48,13 @@ def _get_single_shifted_reg(asm_str):
         shift_type = 'left'
         substr = asm_str.split('<<')
     else:
-        return _get_single_reg(asm_str), False, 0
+        return _get_single_wdr(asm_str), False, 0
 
     if len(substr) != 2:
         raise SyntaxError('Syntax error in parameter set in input shift notation. '
                           'Expected reg and shift immediate')
 
-    reg = _get_single_reg(substr[0].strip())
+    wdr = _get_single_wdr(substr[0].strip())
     if substr[1].strip().lower().endswith('b'):
         shift_bytes = int(substr[1].strip()[:-1])
         if not shift_bytes.isdigit():
@@ -94,7 +66,7 @@ def _get_single_shifted_reg(asm_str):
             raise SyntaxError('input shift immediate not a number')
         shift_bits = int(shift_bits_str)
 
-    return reg, shift_type, shift_bits
+    return wdr, shift_type, shift_bits
 
 
 def _get_optional_flag_group_and_flag(asm_str):
@@ -118,19 +90,6 @@ def _get_optional_flag_group_and_flag(asm_str):
     return flag_group, flag
 
 
-def _get_single_reg_with_section(asm_str):
-    """decode a reg with indication a upper/lower section (e.g. "r21l" or "r23u")"""
-    if asm_str.endswith('u'):
-        upper = True
-    elif asm_str.endswith('l'):
-        upper = False
-    else:
-        raise SyntaxError('Expecting \'u\' or \'l\' at end of register reference '
-                          'with section indication')
-    reg = _get_single_reg(asm_str[:-1].strip())
-    return reg, upper
-
-
 def _get_flag_group(asm_str):
     substr = asm_str.strip().lower()
     if substr == 'fgd':
@@ -141,88 +100,88 @@ def _get_flag_group(asm_str):
         raise SyntaxError('Syntax error: invalid flag group')
 
 
-def _get_three_regs_with_flag_group_and_shift(asm_str):
-    """decode the full BN standard format with rd, rs1 and optional flag group and
-    possibly shifted rs2 (e.g.: "r21, r5, r7 >> 128")"""
+def _get_three_wdr_with_flag_group_and_shift(asm_str):
+    """decode the full BN standard format with wd, ws1 and optional flag group and
+    possibly shifted rs2 (e.g.: "w21, w5, w7 >> 128")"""
     substr = asm_str.split(',')
     if not (len(substr) == 3 or len(substr) == 4):
         raise SyntaxError('Syntax error in parameter set. Expected three reg references and optional flag group')
-    rd = _get_single_reg(substr[0].strip())
-    rs1 = _get_single_reg(substr[1].strip())
-    rs2, shift_type, shift_bits = _get_single_shifted_reg(substr[2].strip())
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs1 = _get_single_wdr(substr[1].strip())
+    wrs2, shift_type, shift_bits = _get_single_shifted_wdr(substr[2].strip())
     flag_group = 'standard'
     if len(substr) == 4:
         flag_group = _get_flag_group(substr[3].strip())
-    return rd, rs1, rs2, shift_type, shift_bits, flag_group
+    return wrd, wrs1, wrs2, shift_type, shift_bits, flag_group
 
 
-def _get_three_regs_with_flag_group_and_flag(asm_str):
-    """decode the full BN format with rd, rs1, optional flag group and flag"""
+def _get_three_wdr_with_flag_group_and_flag(asm_str):
+    """decode the full BN format with wrd, wrs1, optional flag group and flag"""
     substr = asm_str.split(',')
     if not (len(substr) == 4):
         raise SyntaxError('Syntax error in parameter set. Expected three reg references and flag')
-    rd = _get_single_reg(substr[0].strip())
-    rs1 = _get_single_reg(substr[1].strip())
-    rs2 = _get_single_reg(substr[2].strip())
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs1 = _get_single_wdr(substr[1].strip())
+    wrs2 = _get_single_wdr(substr[2].strip())
     flag_group, flag = _get_optional_flag_group_and_flag(substr[3].lower().strip())
-    return rd, rs1, rs2, flag_group, flag
+    return wrd, wrs1, wrs2, flag_group, flag
 
 
-def _get_two_regs_with_shift(asm_str):
-    """decode the BN format with rd, rs and possibly shifted rs (e.g.: "r21, r7 >> 128")"""
+def _get_two_wdr_with_shift(asm_str):
+    """decode the BN format with wrd, wrs and possibly shifted wrs (e.g.: "w21, w7 >> 128")"""
     substr = asm_str.split(',')
     if not (len(substr) == 2):
         raise SyntaxError('Syntax error in parameter set. Expected two reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs, shift_type, shift_bits = _get_single_shifted_reg(substr[1].strip())
-    return rd, rs, shift_type, shift_bits
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs, shift_type, shift_bits = _get_single_shifted_wdr(substr[1].strip())
+    return wrd, wrs, shift_type, shift_bits
 
 
-def _get_three_regs_with_two_half_word_sels(asm_str):
-    """decode the BN format for half word mul with rd, rs1 and rs2 and half word selectors for the source regs"""
+def _get_three_wdr_with_two_half_word_sels(asm_str):
+    """decode the BN format for half word mul with wrd, wrs1 and wrs2 and half word selectors for the source regs"""
     substr = asm_str.split(',')
     if not (len(substr) == 3 or len(substr) == 4):
         raise SyntaxError('Syntax error in parameter set. Expected three reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1, rs1_hw_sel = _get_single_reg_with_hw_sel(substr[1].strip())
-    rs2, rs2_hw_sel = _get_single_reg_with_hw_sel(substr[2].strip())
-    return rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs1, wrs1_hw_sel = _get_single_wdr_with_hw_sel(substr[1].strip())
+    wrs2, wrs2_hw_sel = _get_single_wdr_with_hw_sel(substr[2].strip())
+    return wrd, wrs1, wrs1_hw_sel, wrs2, wrs2_hw_sel
 
 
-def _get_two_regs(asm_str):
-    """decode the BN format with rd and rs"""
+def _get_two_wdr(asm_str):
+    """decode the BN format with wrd and wrs"""
     substr = asm_str.split(',')
     if not (len(substr) == 2):
         raise SyntaxError('Syntax error in parameter set. Expected three reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs = _get_single_reg(substr[1].strip())
-    return rd, rs
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs = _get_single_wdr(substr[1].strip())
+    return wrd, wrs
 
 
-def _get_three_regs(asm_str):
-    """decode the BN format with rd, rs1 and rs2 (e.g.: "r21, r5, r7")"""
+def _get_three_wdr(asm_str):
+    """decode the BN format with wrd, wrs1 and wrs2 (e.g.: "w21, w5, w7")"""
     substr = asm_str.split(',')
     if not (len(substr) == 3):
         raise SyntaxError('Syntax error in parameter set. Expected three reg references')
-    rd = _get_single_reg(substr[0].strip())
-    rs1 = _get_single_reg(substr[1].strip())
-    rs2 = _get_single_reg(substr[2].strip())
-    return rd, rs1, rs2
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs1 = _get_single_wdr(substr[1].strip())
+    wrs2 = _get_single_wdr(substr[2].strip())
+    return wrd, wrs1, wrs2
 
 
-def _get_two_regs_and_imm_with_flag_group(asm_str):
-    """decode the BN immediate standard format with rd, rs and optional flag group"""
+def _get_two_wdr_and_imm_with_flag_group(asm_str):
+    """decode the BN immediate standard format with wrd, wrs and optional flag group"""
     substr = asm_str.split(',')
     if not (len(substr) == 3 or len(substr) == 4):
         raise SyntaxError('Syntax error in parameter set. Expected two reg references + '
                           'immediate and optional flag group')
-    rd = _get_single_reg(substr[0].strip())
-    rs = _get_single_reg(substr[1].strip())
+    wrd = _get_single_wdr(substr[0].strip())
+    wrs = _get_single_wdr(substr[1].strip())
     imm = _get_imm(substr[2].strip())
     flag_group = 'standard'
     if len(substr) == 4:
         flag_group = _get_flag_group(substr[3].strip())
-    return rd, rs, imm, flag_group
+    return wrd, wrs, imm, flag_group
 
 
 def _get_two_imm(asm_str):
@@ -295,9 +254,9 @@ def _get_wdr_imm_wd(asm_str):
     substr = asm_str.split(',')
     if not (len(substr) == 3):
         raise SyntaxError('Syntax error in parameter set. Expected two GPRs and immediate')
-    wrd1 = _get_single_reg(substr[0].strip().lower())
+    wrd1 = _get_single_wdr(substr[0].strip().lower())
     imm = _get_imm(substr[1].strip())
-    wrd2 = _get_single_reg(substr[2].strip().lower())
+    wrd2 = _get_single_wdr(substr[2].strip().lower())
     return wrd1, imm, wrd2
 
 
@@ -354,12 +313,12 @@ def _get_two_gprs_with_offset(asm_str):
     return x1, offset, x2
 
 
-def _get_single_reg(asm_str):
-    """returns a single register from string and check proper formatting (e.g "r5")"""
+def _get_single_wdr(asm_str):
+    """returns a single register from string and check proper formatting (e.g "w5")"""
     if len(asm_str.split()) > 1:
         raise SyntaxError('Unexpected separator in reg reference')
-    if not asm_str.lower().startswith('r'):
-        raise SyntaxError('Missing \'r\' character at start of reg reference')
+    if not asm_str.lower().startswith('w'):
+        raise SyntaxError('Missing \'w\' character at start of reg reference')
     if not asm_str[1:].isdigit():
         raise SyntaxError('reg reference not a number')
     return int(asm_str[1:])
@@ -604,7 +563,7 @@ class GInsBnShift(GInsBn):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs1, rs2, shift_type, shift_bits, flag_group = _get_three_regs_with_flag_group_and_shift(params)
+        rd, rs1, rs2, shift_type, shift_bits, flag_group = _get_three_wdr_with_flag_group_and_shift(params)
         if shift_bits % 8:
             raise SyntaxError('Input shift immediate not byte aligned')
         return cls(rd, rs1, rs2, flag_group, shift_type, int(shift_bits/8), ctx.ins_ctx)
@@ -633,7 +592,7 @@ class GInsBnImm(GInsBn):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs, imm, flag_group = _get_two_regs_and_imm_with_flag_group(params)
+        rd, rs, imm, flag_group = _get_two_wdr_and_imm_with_flag_group(params)
         return cls(rd, rs, imm, flag_group, ctx.ins_ctx)
 
 
@@ -650,7 +609,7 @@ class GInsBnMod(GInsBn):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs1, rs2, = _get_three_regs(params)
+        rd, rs1, rs2, = _get_three_wdr(params)
         return cls(rd, rs1, rs2, ctx.ins_ctx)
 
 
@@ -1011,7 +970,7 @@ class IBnMulh(GInsBn):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel = _get_three_regs_with_two_half_word_sels(params)
+        rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel = _get_three_wdr_with_two_half_word_sels(params)
         return cls(rd, rs1, rs1_hw_sel, rs2, rs2_hw_sel, ctx.ins_ctx)
 
     def execute(self, m):
@@ -1129,7 +1088,7 @@ class IBnNot(GIns):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs, shift_type, shift_bits = _get_two_regs_with_shift(params)
+        rd, rs, shift_type, shift_bits = _get_two_wdr_with_shift(params)
         if shift_bits % 8:
             raise SyntaxError('Input shift immediate not byte aligned')
         return cls(rd, rs, shift_type, int(shift_bits / 8), ctx.ins_ctx)
@@ -1161,7 +1120,7 @@ class IBnRshi(GInsBn):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs1, rs2, shift_type, shift_bits, flag_group = _get_three_regs_with_flag_group_and_shift(params)
+        rd, rs1, rs2, shift_type, shift_bits, flag_group = _get_three_wdr_with_flag_group_and_shift(params)
         if shift_type != 'right':
             raise SyntaxError('Only right shift possible with this instruction')
         if flag_group != 'standard':
@@ -1194,7 +1153,7 @@ class IBnSel(GInsBn):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs1, rs2, flag_group, flag = _get_three_regs_with_flag_group_and_flag(params)
+        rd, rs1, rs2, flag_group, flag = _get_three_wdr_with_flag_group_and_flag(params)
         return cls(rd, rs1, rs2, flag_group, flag, ctx.ins_ctx)
 
     def execute(self, m):
@@ -1228,7 +1187,7 @@ class IBnMov(GIns):
 
     @classmethod
     def enc(cls, addr, mnem, params, ctx):
-        rd, rs = _get_two_regs(params)
+        rd, rs = _get_two_wdr(params)
         return cls(rd, rs, ctx.ins_ctx)
 
     def execute(self, m):
