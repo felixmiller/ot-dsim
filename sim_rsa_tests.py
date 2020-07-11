@@ -28,6 +28,7 @@ BN_MAX_WORDS = 16  # Max number of bn words per val (for 4096 bit words)
 DMEM_DEPTH = 1024
 PROGRAM_HEX_FILE = 'hex/dcrypto_bn.hex'
 PROGRAM_ASM_FILE = 'asm/dcrypto_bn.asm'
+PROGRAM_OTBN_ASM_FILE = 'asm/otbn_bn.asm'
 
 # pointers to dmem areas according to calling conventions for bignum lib
 DMEMP_IN = 38
@@ -175,20 +176,61 @@ def load_mod(mod):
 
 # Program loading
 def load_program_hex():
+    """Load binary executable from file"""
     global ins_objects
     global ctx
-    """Load binary executable from file"""
+    global start_addr_dict
+    global stop_addr_dict
+
     insfile = open(PROGRAM_HEX_FILE)
     ins_objects, ctx = ins_objects_from_hex_file(insfile)
     insfile.close()
 
+    start_addr_dict = {'modload': 414, 'mulx': 172, 'mul1': 236, 'modexp': 303, 'modexp_blinded': 338}
+    stop_addr_dict = {'modload': 425, 'mulx': 190, 'mul1': 239, 'modexp': 337,  'modexp_blinded': 413}
+
+
 def load_program_asm():
+    """Load program from assembly file"""
     global ins_objects
     global ctx
-    """Load binary executable from file"""
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
+
     insfile = open(PROGRAM_ASM_FILE)
-    ins_objects, ctx = ins_objects_from_asm_file(insfile)
+    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile)
     insfile.close()
+
+    # reverse function address dictionary
+    function_addr = {v: k for k, v in ctx.functions.items()}
+    start_addr_dict = {'modload': function_addr['modload'], 'mulx': function_addr['mulx'],
+                       'mul1': function_addr['mul1'], 'modexp': function_addr['modexp'],
+                       'modexp_blinded': function_addr['modexp_blinded'] }
+    stop_addr_dict = {'modload': function_addr['selA0orC4']-1, 'mulx': function_addr['mm1_sub_cx']-1,
+                       'mul1': function_addr['sqrx_exp']-1, 'modexp': function_addr['modexp_blinded']-1,
+                       'modexp_blinded': function_addr['modload']-1}
+
+
+def load_program_otbn_asm():
+    """Load program from otbn assembly file"""
+    global ins_objects
+    global ctx
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
+
+    insfile = open(PROGRAM_OTBN_ASM_FILE)
+    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile)
+    insfile.close()
+
+    # reverse label address dictionary for function addresses (OTBN asm does not differentiate between generic
+    # und function labels)
+    function_addr = {v: k for k, v in ctx.labels.items()}
+    start_addr_dict = {'modload': function_addr['modload'], 'mulx': function_addr['mulx'],
+                       'mul1': function_addr['mul1'], 'modexp': function_addr['modexp'] }
+    stop_addr_dict = {'modload': len(ins_objects)-1, 'mulx': function_addr['mm1_sub_cx']-1,
+                       'mul1': function_addr['sqrx_exp']-1, 'modexp': function_addr['modload']-1}
 
 
 def dump_trace_str(trace_string):
@@ -209,10 +251,10 @@ def run_modload(bn_words):
     global cycle_cnt
     global stats
     global ctx
-    start_addr = 414
-    stop_addr = 425
+
     load_pointer(bn_words, DMEM_LOC_IN_PTRS, DMEMP_IN, DMEMP_EXP, DMEMP_OUT)
-    machine = Machine(dmem.copy(), ins_objects, start_addr, stop_addr, ctx=ctx)
+    breakpoints.append(start_addr_dict['modload'])
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['modload'], stop_addr_dict['modload'], ctx=ctx, breakpoints=breakpoints)
     machine.stats = stats
     cont = True
     while cont:
@@ -233,10 +275,9 @@ def run_montmul(bn_words, p_a, p_b, p_out):
     global cycle_cnt
     global stats
     global ctx
-    start_addr = 172
-    stop_addr = 190
+    global breakpoints
     load_pointer(bn_words, DMEM_LOC_IN_PTRS, p_a, p_b, p_out)
-    machine = Machine(dmem.copy(), ins_objects, start_addr, stop_addr, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['mulx'], stop_addr_dict['mulx'], ctx=ctx, breakpoints=breakpoints)
     machine.stats = stats
     cont = True
     i = 0
@@ -258,10 +299,8 @@ def run_montout(bn_words, p_a, p_out):
     global cycle_cnt
     global stats
     global ctx
-    start_addr = 236
-    stop_addr = 239
     load_pointer(bn_words, DMEM_LOC_IN_PTRS, p_a, 0, p_out)
-    machine = Machine(dmem.copy(), ins_objects, start_addr, stop_addr, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['mul1'], stop_addr_dict['mul1'], ctx=ctx)
     machine.stats = stats
     cont = True
     while cont:
@@ -281,14 +320,12 @@ def run_modexp(bn_words, exp):
     global cycle_cnt
     global stats
     global ctx
-    start_addr = 303
-    stop_addr = 337
     load_full_bn_val(DMEMP_EXP, exp)
     load_pointer(bn_words, DMEM_LOC_IN_PTRS, DMEMP_IN, DMEMP_RR, DMEMP_IN)
     load_pointer(bn_words, DMEM_LOC_SQR_PTRS, DMEMP_OUT, DMEMP_OUT, DMEMP_OUT)
     load_pointer(bn_words, DMEM_LOC_MUL_PTRS, DMEMP_IN, DMEMP_OUT, DMEMP_OUT)
     load_pointer(bn_words, DMEM_LOC_OUT_PTRS, DMEMP_OUT, DMEMP_EXP, DMEMP_OUT)
-    machine = Machine(dmem.copy(), ins_objects, start_addr, stop_addr, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['modexp'], stop_addr_dict['modexp'], ctx=ctx)
     machine.stats = stats
     cont = True
     while cont:
@@ -300,6 +337,7 @@ def run_modexp(bn_words, exp):
     dmem = machine.dmem.copy()
     return res
 
+
 def run_modexp_blinded(bn_words, exp):
     """Runs the primitive for modular exponentiation (modexp)"""
     global dmem
@@ -307,15 +345,14 @@ def run_modexp_blinded(bn_words, exp):
     global cycle_cnt
     global stats
     global ctx
-    start_addr = 338
-    stop_addr = 413
     load_full_bn_val(DMEMP_EXP, exp)
     load_pointer(bn_words, DMEM_LOC_IN_PTRS, DMEMP_IN, DMEMP_RR, DMEMP_IN)
     load_pointer(bn_words, DMEM_LOC_SQR_PTRS, DMEMP_OUT, DMEMP_OUT, DMEMP_OUT)
     load_pointer(bn_words, DMEM_LOC_MUL_PTRS, DMEMP_IN, DMEMP_OUT, DMEMP_OUT)
     load_pointer(bn_words, DMEM_LOC_OUT_PTRS, DMEMP_OUT, DMEMP_EXP, DMEMP_OUT)
     load_blinding(EXP_PUB,0,0,0)
-    machine = Machine(dmem.copy(), ins_objects, start_addr, stop_addr, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['modexp_blinded'], stop_addr_dict['modexp_blinded'],
+                      ctx=ctx)
     machine.stats = stats
     cont = True
     while cont:
@@ -408,13 +445,15 @@ def main():
     global cycle_cnt
     global stats
     global ctx
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
     init_dmem()
 
-    # Run from asm file
-    load_program_asm()
-
-    # Run from hex file
+    # select program source
     #load_program_hex()
+    #load_program_asm()
+    load_program_otbn_asm()
 
     msg_str = 'Hello bignum, can you encrypt and decrypt this for me?'
     msg = get_msg_val(msg_str)
@@ -445,12 +484,12 @@ def main():
 
         if test_op == 'enc':
             enc = rsa_encrypt(RSA_N[test_width], test_width // 256, msg)
-            #print('encrypted message: ' + hex(enc))
+            print('encrypted message: ' + hex(enc))
         elif test_op == 'dec':
             decrypt = rsa_decrypt(RSA_N[test_width], test_width // 256,
                                   RSA_D[test_width], enc)
             check_decrypt(msg, decrypt)
-            #print('decrypted message: ' + get_msg_str(decrypt))
+            print('decrypted message: ' + get_msg_str(decrypt))
         else:
             assert True
 
