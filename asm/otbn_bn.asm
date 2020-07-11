@@ -25,26 +25,26 @@ BN.ADD w4, w4, w31
 CSRRS x2, 1984, x0
 ANDI x2, x2, 2
 BNE x2, x0, selcxSub_invsel
-BN.ADDC w3, w4, w4 << 16, FGX
+BN.ADDC w3, w4, w4 << 16, FG1
 LOOP x30, 7
 BN.LID x10, 0(x16++)
 BN.MOVR x11, x8
 BN.MOVR x8, x12
 BN.SUBB w4, w2, w3
 BN.WSRRW w3, 2, w3
-BN.SEL w3, w4, w2, FGX.L
+BN.SEL w3, w4, w2, FG1.L
 BN.MOVR x8++, x10
 JALR x0, x1, 0
 
 selcxSub_invsel:
-BN.ADDC w3, w4, w4 << 16, FGX
+BN.ADDC w3, w4, w4 << 16, FG1
 LOOP x30, 7
 BN.LID x10, 0(x16++)
 BN.MOVR x11, x8
 BN.MOVR x8, x12
 BN.SUBB w4, w2, w3
 BN.WSRRW w3, 2, w3
-BN.SEL w3, w2, w4, FGX.L
+BN.SEL w3, w2, w4, FG1.L
 BN.MOVR x8++, x10
 JALR x0, x1, 0
 
@@ -67,23 +67,23 @@ ADDI x10, x0, 3
 BN.XOR w3, w3, w3
 LOOP x30, 1
 BN.MOVR x8++, x10
-BN.SUB w3, w31, w0, FGX
+BN.SUB w3, w31, w0, FG1
 JAL x1, selcxSub
 LOOP x24, 16
 ADDI x8, x0, 5
-BN.SUB w3, w3, w3, FGX
+BN.SUB w3, w3, w3, FG1
 LOOP x30, 3
 BN.MOVR x11, x8
-BN.ADDC w2, w2, w2, FGX
+BN.ADDC w2, w2, w2, FG1
 BN.MOVR x8++, x11
 JAL x1, selcxSub
 ADDI x8, x0, 5
 LW x16, 0(x0)
-BN.SUB w3, w3, w3, FGX
+BN.SUB w3, w3, w3, FG1
 LOOP x30, 3
 BN.LID x10, 0(x16++)
 BN.MOVR x11, x8++
-BN.CMPB w0, w3, w2, FGX
+BN.CMPB w0, w3, w2, FG1
 JAL x1, selcxSub
 ADDI x0, x0, 0
 ADDI x8, x0, 5
@@ -120,26 +120,26 @@ BN.ADD w28, w28, w31
 CSRRS x2, 1984, x0
 ANDI x2, x2, 2
 BNE x2, x0, mma_invsel
-BN.ADDC w28, w28, w28 << 16, FGX
+BN.ADDC w28, w28, w28 << 16, FG1
 LOOP x30, 7
 BN.LID x13, 0(x16++)
 BN.MOVR x12, x8
 BN.SUBB w29, w30, w24
 BN.WSRRW w24, 2, w24
 BN.MOVR x8, x13
-BN.SEL w24, w29, w30, FGX.L
+BN.SEL w24, w29, w30, FG1.L
 BN.MOVR x8++, x13
 JALR x0, x1, 0
 
 mma_invsel:
-BN.ADDC w28, w28, w28 << 16, FGX
+BN.ADDC w28, w28, w28 << 16, FG1
 LOOP x30, 7
 BN.LID x13, 0(x16++)
 BN.MOVR x12, x8
 BN.SUBB w29, w30, w24
 BN.WSRRW w24, 2, w24
 BN.MOVR x8, x13
-BN.SEL w24, w30, w29, FGX.L
+BN.SEL w24, w30, w29, FG1.L
 BN.MOVR x8++, x13
 JALR x0, x1, 0
 
@@ -174,11 +174,11 @@ BN.LID x12, 0(x16++)
 JAL x1, dmXd0
 BN.ADD w27, w27, w24
 BN.ADDC w26, w26, w31
-BN.ADD w24, w27, w28, FGX
+BN.ADD w24, w27, w28, FG1
 BN.MOVR x10++, x13
-BN.ADDC w28, w26, w31, FGX
+BN.ADDC w28, w26, w31, FG1
 
-BN.ADDC w24, w29, w28, FGX
+BN.ADDC w24, w29, w28, FG1
 BN.MOVR x10++, x13
 LW x16, 0(x0)
 LW x19, 3(x0)
@@ -245,24 +245,24 @@ BN.ADD w3, w3, w31
 CSRRS x2, 1984, x0
 ANDI x2, x2, 2
 BNE x2, x0, mm1_invsel
-BN.ADDC w3, w3, w3 << 16, FGX
+BN.ADDC w3, w3, w3 << 16, FG1
 LOOP x30, 6
 BN.LID x9, 0(x16++)
 BN.MOVR x11, x8++
 BN.SUBB w3, w2, w3
-BN.SEL w2, w3, w2, FGX.L
+BN.SEL w2, w3, w2, FG1.L
 BN.SID x11, 0(x21++)
 ADDI x0, x0, 0
 JALR x0, x1, 0
 ADDI x0, x0, 0
 
 mm1_invsel:
-BN.ADDC w3, w3, w3 << 16, FGX
+BN.ADDC w3, w3, w3 << 16, FG1
 LOOP x30, 6
 BN.LID x9, 0(x16++)
 BN.MOVR x11, x8++
 BN.SUBB w3, w2, w3
-BN.SEL w2, w2, w3, FGX.L
+BN.SEL w2, w2, w3, FG1.L
 BN.SID x11, 0(x21++)
 ADDI x0, x0, 0
 JALR x0, x1, 0
@@ -283,11 +283,11 @@ JAL x1, mma
 BN.MOV w2, w31
 ADDI x16, x6, 0
 ADDI x19, x7, 0
-BN.SUB w2, w2, w2, FGX
+BN.SUB w2, w2, w2, FG1
 LOOP x30, 3
 BN.LID x9, 0(x16++)
 BN.MOVR x11, x8++
-BN.CMPB w0, w3, w2, FGX
+BN.CMPB w0, w3, w2, FG1
 ADDI x8, x0, 4
 ADDI x10, x0, 4
 ADDI x16, x6, 0

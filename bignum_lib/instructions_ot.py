@@ -70,17 +70,17 @@ def _get_single_shifted_wdr(asm_str):
 
 
 def _get_optional_flag_group_and_flag(asm_str):
-    """decode a flag with optional flag group (e.g FGX.L or just M)"""
+    """decode a flag with optional flag group (e.g FG1.L or just M)"""
     substr = asm_str.split('.')
     if len(substr) > 2:
         raise SyntaxError('Malformed flag group and/or flag reference')
     if len(substr) == 2:
-        if substr[0] == 'fgs':
+        if substr[0] == 'fg0':
             flag_group = 'standard'
-        if substr[0] == 'fgx':
+        if substr[0] == 'fg1':
             flag_group = 'extension'
         else:
-            raise SyntaxError('Flag group must be either FGS for standard or FGX for extension')
+            raise SyntaxError('Flag group must be either FG0 for standard or FG1 for extension')
         flag = substr[1].lower()
     else:
         flag = asm_str.lower()
@@ -92,9 +92,9 @@ def _get_optional_flag_group_and_flag(asm_str):
 
 def _get_flag_group(asm_str):
     substr = asm_str.strip().lower()
-    if substr == 'fgd':
+    if substr == 'fg0':
         return 'default'
-    elif substr == 'fgx':
+    elif substr == 'fg1':
         return 'extension'
     else:
         raise SyntaxError('Syntax error: invalid flag group')
@@ -558,7 +558,7 @@ class GInsBnShift(GInsBn):
             if self.shift_bytes:
                 asm_str += ' << ' + str(self.shift_bytes*8)
         if self.flag_group == 'extension':
-            asm_str += ', FGX'
+            asm_str += ', FG1'
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
@@ -587,7 +587,7 @@ class GInsBnImm(GInsBn):
     def get_asm_str(self):
         asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', ' + str(self.imm)
         if self.flag_group == 'extension':
-            asm_str += ', FGX'
+            asm_str += ', FG1'
         return self.hex_str, asm_str, self.malformed
 
     @classmethod
@@ -1147,7 +1147,7 @@ class IBnSel(GInsBn):
     def get_asm_str(self):
         asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1) + ', r' + str(self.rs2) + ', '
         if self.flag_group == 'extension':
-            asm_str += 'FGX.'
+            asm_str += 'FG1.'
         asm_str += self.flag.upper()
         return self.hex_str, asm_str, self.malformed
 
