@@ -1283,7 +1283,7 @@ class IBnWsrrw(GInsWsr):
 class IOtLoopi(GIns):
     """Immediate Loop"""
 
-    MNEM = 'OT.LOOPI'
+    MNEM = 'LOOPI'
 
     def __init__(self, iter, len, ctx):
         self.iter = iter
@@ -1308,7 +1308,7 @@ class IOtLoopi(GIns):
 class IOtLoop(GIns):
     """Indirect Loop"""
 
-    MNEM = 'OT.LOOP'
+    MNEM = 'LOOP'
 
     def __init__(self, xiter, len, ctx):
         self.xiter = xiter  # GPR containing # of iterations
@@ -1447,7 +1447,7 @@ class IOtCsr(GIns):
 class IOtAdd(IOtGpr):
     """Base add"""
 
-    MNEM = 'OT.ADD'
+    MNEM = 'ADD'
 
     def execute(self, m):
         res = m.get_gpr(self.xs1) + m.get_gpr(self.xs2)
@@ -1459,7 +1459,7 @@ class IOtAdd(IOtGpr):
 class IOtAddi(IOtImm):
     """Base add immediate"""
 
-    MNEM = 'OT.ADDI'
+    MNEM = 'ADDI'
 
     def execute(self, m):
         res = m.get_gpr(self.xs) + self.imm
@@ -1471,7 +1471,7 @@ class IOtAddi(IOtImm):
 class IOtSub(IOtGpr):
     """Base subtract"""
 
-    MNEM = 'OT.SUB'
+    MNEM = 'SUB'
 
     def execute(self, m):
         res = m.get_gpr(self.xs1) - m.get_gpr(self.xs2)
@@ -1483,7 +1483,7 @@ class IOtSub(IOtGpr):
 class IOtAnd(IOtGpr):
     """Base bitwise AND"""
 
-    MNEM = 'OT.AND'
+    MNEM = 'AND'
 
     def execute(self, m):
         res = m.get_gpr(self.xs1) & m.get_gpr(self.xs2)
@@ -1495,7 +1495,7 @@ class IOtAnd(IOtGpr):
 class IOtAndi(IOtImm):
     """Base bitwise AND with immediate"""
 
-    MNEM = 'OT.ANDI'
+    MNEM = 'ANDI'
 
     def execute(self, m):
         res = m.get_gpr(self.xs) & self.imm
@@ -1507,7 +1507,7 @@ class IOtAndi(IOtImm):
 class IOtOr(IOtGpr):
     """Base bitwise OR"""
 
-    MNEM = 'OT.OR'
+    MNEM = 'OR'
 
     def execute(self, m):
         res = m.get_gpr(self.xs1) | m.get_gpr(self.xs2)
@@ -1519,7 +1519,7 @@ class IOtOr(IOtGpr):
 class IOtOri(IOtImm):
     """Base bitwise OR with immediate"""
 
-    MNEM = 'OT.ORI'
+    MNEM = 'ORI'
 
     def execute(self, m):
         res = m.get_gpr(self.xs) | self.imm
@@ -1531,7 +1531,7 @@ class IOtOri(IOtImm):
 class IOtXor(IOtGpr):
     """Base bitwise XOR"""
 
-    MNEM = 'OT.XOR'
+    MNEM = 'XOR'
 
     def execute(self, m):
         res = m.get_gpr(self.xs1) ^ m.get_gpr(self.xs2)
@@ -1543,7 +1543,7 @@ class IOtXor(IOtGpr):
 class IOtXori(IOtImm):
     """Base bitwise XOR with immediate"""
 
-    MNEM = 'OT.XORI'
+    MNEM = 'XORI'
 
     def execute(self, m):
         res = m.get_gpr(self.xs) ^ self.imm
@@ -1555,7 +1555,7 @@ class IOtXori(IOtImm):
 class IOtSlli(IOtImm):
     """Left shift immediate"""
 
-    MNEM = 'OT.SLLI'
+    MNEM = 'SLLI'
 
     def execute(self, m):
         res = m.get_gpr(self.xs) << self.imm
@@ -1567,7 +1567,7 @@ class IOtSlli(IOtImm):
 class IOtJal(GIns):
     """Jump and link"""
 
-    MNEM = 'OT.JAL'
+    MNEM = 'JAL'
 
     def __init__(self, xd, imm, addr, ctx, label=None):
         self.xd = xd
@@ -1598,7 +1598,7 @@ class IOtJal(GIns):
 class IOtJalr(IOtImm):
     """Jump and link register"""
 
-    MNEM = 'OT.JALR'
+    MNEM = 'JALR'
 
     def execute(self, m):
         m.set_gpr(self.xd, m.get_pc())
@@ -1619,7 +1619,7 @@ class IOtJalr(IOtImm):
 class IOtBne(IOtBranch):
     """Branch not equal"""
 
-    MNEM = 'OT.BNE'
+    MNEM = 'BNE'
 
     def execute(self, m):
         branch_target = False
@@ -1632,7 +1632,7 @@ class IOtBne(IOtBranch):
 class IOtBeq(IOtBranch):
     """Branch equal"""
 
-    MNEM = 'OT.BEQ'
+    MNEM = 'BEQ'
 
     def execute(self, m):
         branch_target = False
@@ -1646,7 +1646,7 @@ class IOtBeq(IOtBranch):
 class IOtCsrrs(IOtCsr):
     """Atomic Read and Set Bits in CSR"""
 
-    MNEM = 'OT.CSRRS'
+    MNEM = 'CSRRS'
 
     def execute(self, m):
         csr_val = m.get_csr(self.csr)
@@ -1660,7 +1660,7 @@ class IOtCsrrs(IOtCsr):
 class IOtCsrrw(IOtCsr):
     """Atomic Read/Write CSR"""
 
-    MNEM = 'OT.CSRRW'
+    MNEM = 'CSRRW'
 
     def execute(self, m):
         csr_val = m.get_csr(self.csr)
@@ -1674,7 +1674,7 @@ class IOtCsrrw(IOtCsr):
 class IOtLui(GIns):
     """Load upper immediate"""
 
-    MNEM = 'OT.LUI'
+    MNEM = 'LUI'
 
     def __init__(self, grd, imm, ctx):
         self.grd = grd
@@ -1700,7 +1700,7 @@ class IOtLui(GIns):
 class IOtLw(GIns):
     """Load word"""
 
-    MNEM = 'OT.LW'
+    MNEM = 'LW'
 
     def __init__(self, grd, offset, grs, ctx):
         self.grd = grd
