@@ -1326,8 +1326,8 @@ class IOtLoop(GIns):
         if not cl_addr and not len:
             raise SyntaxError('No \'loopend\' pseudo instruction found and no length immediate in loop instruction.'
                               ' One must be provided.')
-        len_from_pseudo = cl_addr - addr - 1
-        if len and len_from_pseudo:
+        if len and cl_addr:
+            len_from_pseudo = cl_addr - addr - 1
             if len != len_from_pseudo:
                 raise SyntaxError('Mismatch between loop length immediate and calculated length with '
                                   '\'loopend\' pseudo instruction')
