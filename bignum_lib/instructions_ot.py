@@ -23,18 +23,18 @@ def _get_imm(asm_str):
 
 
 def _get_single_wdr_with_hw_sel(asm_str):
-    """returns a single register from string and check proper formatting (e.g "w5")"""
+    """returns a single register from string with half word select and check proper formatting (e.g "w5.u")"""
     if len(asm_str.split()) > 1:
         raise SyntaxError('Unexpected separator in reg reference')
     if not asm_str.lower().startswith('w'):
         raise SyntaxError('Missing \'w\' character at start of reg reference')
-    if not (asm_str.lower().endswith('u') or asm_str.lower().endswith('l')):
-        raise SyntaxError('Missing \'L\' or \'U\' at end of reg reference')
-    if not asm_str[1:-1].isdigit():
+    if not (asm_str.lower().endswith('.u') or asm_str.lower().endswith('.l')):
+        raise SyntaxError('Missing \'.L\' or \'.U\' at end of reg reference')
+    if not asm_str[1:-2].isdigit():
         raise SyntaxError('reg reference not a number')
-    if asm_str[-1].lower() == 'u':
+    if asm_str[-2:].lower() == '.u':
         hw_sel = 'upper'
-    if asm_str[-1].lower() == 'l':
+    if asm_str[-2:].lower() == '.l':
         hw_sel = 'lower'
     return int(asm_str[1:-1]), hw_sel
 
@@ -140,7 +140,7 @@ def _get_two_wdr_with_shift(asm_str):
 def _get_three_wdr_with_two_half_word_sels(asm_str):
     """decode the BN format for half word mul with wrd, wrs1 and wrs2 and half word selectors for the source regs"""
     substr = asm_str.split(',')
-    if not (len(substr) == 3 or len(substr) == 4):
+    if not len(substr) == 3:
         raise SyntaxError('Syntax error in parameter set. Expected three reg references')
     wrd = _get_single_wdr(substr[0].strip())
     wrs1, wrs1_hw_sel = _get_single_wdr_with_hw_sel(substr[1].strip())
@@ -958,14 +958,14 @@ class IBnMulh(GInsBn):
     def get_asm_str(self):
         asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1)
         if self.rs1_hw_sel == 'upper':
-            asm_str += 'U'
+            asm_str += '.U'
         else:
-            asm_str += 'L'
+            asm_str += '.L'
         asm_str += ', r' + str(self.rs2)
         if self.rs2_hw_sel == 'upper':
-            asm_str += 'U'
+            asm_str += '.U'
         else:
-            asm_str += 'L'
+            asm_str += '.L'
         return self.hex_str, asm_str, self.malformed
 
     @classmethod

@@ -3,10 +3,10 @@ BN.XOR w0, w0, w0
 BN.ADDI w0, w0, 1
 BN.MOV w29, w0
 LOOPI 256, 8
-BN.MULH w1, w28L, w29L
-BN.MULH w2, w28U, w29L
+BN.MULH w1, w28.L, w29.L
+BN.MULH w2, w28.U, w29.L
 BN.ADD w1, w1, w2 << 128
-BN.MULH w2, w28L, w29U
+BN.MULH w2, w28.L, w29.U
 BN.ADD w1, w1, w2 << 128
 BN.AND w1, w1, w0
 BN.OR w29, w29, w1
@@ -93,23 +93,23 @@ ADDI x18, x18, 1
 JALR x0, x1, 0
 
 dmXd0:
-BN.MULH w27, w30L, w25L
-BN.MULH w26, w30U, w25U
-BN.MULH w23, w30U, w25L
+BN.MULH w27, w30.L, w25.L
+BN.MULH w26, w30.U, w25.U
+BN.MULH w23, w30.U, w25.L
 BN.ADD w27, w27, w23 << 128
 BN.ADDC w26, w26, w23 >> 128
-BN.MULH w23, w30L, w25U
+BN.MULH w23, w30.L, w25.U
 BN.ADD w27, w27, w23 << 128
 BN.ADDC w26, w26, w23 >> 128
 JALR x0, x1, 0
 
 dmXa:
-BN.MULH w27, w30L, w2L
-BN.MULH w26, w30U, w2U
-BN.MULH w23, w30U, w2L
+BN.MULH w27, w30.L, w2.L
+BN.MULH w26, w30.U, w2.U
+BN.MULH w23, w30.U, w2.L
 BN.ADD w27, w27, w23 << 128
 BN.ADDC w26, w26, w23 >> 128
-BN.MULH w23, w30L, w2U
+BN.MULH w23, w30.L, w2.U
 BN.ADD w27, w27, w23 << 128
 BN.ADDC w26, w26, w23 >> 128
 JALR x0, x1, 0
