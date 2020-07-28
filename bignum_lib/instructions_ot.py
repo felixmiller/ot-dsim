@@ -1139,12 +1139,12 @@ class IBnMulh(GInsBn):
         super().__init__(rd, rs1, rs2, None, ctx)
 
     def get_asm_str(self):
-        asm_str = self.MNEM + ' r' + str(self.rd) + ', r' + str(self.rs1)
+        asm_str = self.MNEM + ' w' + str(self.rd) + ', w' + str(self.rs1)
         if self.rs1_hw_sel == 'upper':
             asm_str += '.U'
         else:
             asm_str += '.L'
-        asm_str += ', r' + str(self.rs2)
+        asm_str += ', w' + str(self.rs2)
         if self.rs2_hw_sel == 'upper':
             asm_str += '.U'
         else:
