@@ -1805,7 +1805,7 @@ class IOtBne(IOtBranch):
     MNEM = 'BNE'
 
     def execute(self, m):
-        branch_target = False
+        branch_target = None
         if m.get_gpr(self.grs1) != m.get_gpr(self.grs2):
             branch_target = m.get_pc() + self.offset
         trace_str = self.get_asm_str()[1]
@@ -1818,7 +1818,7 @@ class IOtBeq(IOtBranch):
     MNEM = 'BEQ'
 
     def execute(self, m):
-        branch_target = False
+        branch_target = None
         branch = m.get_gpr(self.grs1) == m.get_gpr(self.grs2)
         if branch:
             branch_target = m.get_pc() + self.offset
