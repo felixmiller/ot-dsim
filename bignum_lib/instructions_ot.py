@@ -628,6 +628,41 @@ class GInsBnShift(GInsBn):
         return rs2op
 
 
+class GInsBnCmpShift(GInsBn):
+    """Bignum compare format with immediate shift
+    BN.<ins> <wrs1>, <wrs2>, FG<flag_group> [, <shift_type> <shift_bytes>B]"""
+
+    def __init__(self, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        self.shift_type = shift_type
+        self.shift_bytes = shift_bytes
+        super().__init__(None, rs1, rs2, flag_group, ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM + ' w' + str(self.rs1) + ', w' + str(self.rs2)
+        if self.shift_type == 'right':
+            asm_str += ' >> ' + str(self.shift_bytes*8)
+        else:
+            if self.shift_bytes:
+                asm_str += ' << ' + str(self.shift_bytes*8)
+        if self.flag_group == 'extension':
+            asm_str += ', FG1'
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        rs1, rs2, shift_type, shift_bits, flag_group = _get_two_wdr_with_flag_group_and_shift(params)
+        if shift_bits % 8:
+            raise SyntaxError('Input shift immediate not byte aligned')
+        return cls(rs1, rs2, flag_group, shift_type, int(shift_bits/8), ctx.ins_ctx)
+
+    def exec_shift(self, m):
+        if self.shift_type == 'right':
+            rs2op = (m.get_reg(self.rs2) >> self.shift_bytes*8) & m.xlen_mask
+        else:
+            rs2op = (m.get_reg(self.rs2) << self.shift_bytes*8) & m.xlen_mask
+        return rs2op
+
+
 class GInsBnImm(GInsBn):
     """Standard Bignum format with one source register and immediate
     BN.<ins> <wrd>, <wrs>, <imm>, [ FG<flag_group>]"""
