@@ -29,6 +29,7 @@ class Assembler:
         labels = {}
         loop_stack = []
         for i, line in enumerate(self.lines):
+            line = line.split(';')[0].strip()
             tokens = line.strip().split()
             if not tokens:
                 continue
