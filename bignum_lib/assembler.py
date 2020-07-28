@@ -12,7 +12,7 @@ class Assembler:
     TOK_LOOP = ['loop', 'OT.LOOP', 'OT.LOOPI', 'LOOP', 'LOOPI']
     TOK_SPECIAL = [')', '}', 'endloop','break']
 
-    def __init__(self, lines):
+    def __init__(self, lines, dmem_byte_addressing=False):
         self.funclose =  [] # List of addresses where functions are closed
         self.instr = [] # the program (mnem, (param_string, line))
         self.ins_objects = []
@@ -20,10 +20,10 @@ class Assembler:
         self.ins_fac = InstructionFactory()
         self.ins_fac_ot = InstructionFactoryOt()
         self.lines = lines
-        self.ctx = self.__create_index()
+        self.ctx = self.__create_index(dmem_byte_addressing=dmem_byte_addressing)
         self.__check_fun_len()
 
-    def __create_index(self):
+    def __create_index(self, dmem_byte_addressing=False):
         functions = {}
         loopclose = {}
         labels = {}
@@ -103,7 +103,7 @@ class Assembler:
         #if len(loop_stack) != 0:
         #        raise SyntaxError('Unexpected EOF. Unclosed Loop. Missing \')\'')
 
-        return AsmCtx(functions, loopclose, labels)
+        return AsmCtx(functions, loopclose, labels, dmem_byte_addressing=dmem_byte_addressing)
 
     def __check_fun_len(self):
         """Check for consitency of function definitions and closing characters

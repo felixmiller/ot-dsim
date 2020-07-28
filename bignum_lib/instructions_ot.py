@@ -726,12 +726,6 @@ class GInsIndReg(GIns):
         xd, inc_xd, xs, inc_xs = _get_two_gprs_with_inc(params)
         return cls(xd, inc_xd, xs, inc_xs, ctx.ins_ctx)
 
-    def exec_inc(self, m):
-        if self.inc_xd:
-            m.inc_gpr(self.xd)
-        if self.inc_xs:
-            m.inc_gpr(self.xs)
-
 
 class GInsIndLs(GIns):
     """Standard Bignum format for indirect load, store : BN.<ins> <gpr>[<inc>], <offset>(<gpr>[<gpr_inc>]) """
@@ -760,12 +754,6 @@ class GInsIndLs(GIns):
     def enc(cls, addr, mnem, params, ctx):
         x1, inc_x1, x2, inc_x2, offset = _get_two_gprs_with_inc_and_offset(params)
         return cls(x1, inc_x1, x2, inc_x2, offset, ctx.ins_ctx)
-
-    def exec_inc(self, m):
-        if self.inc_x1:
-            m.inc_gpr(self.x1)
-        if self.inc_x2:
-            m.inc_gpr(self.x2)
 
 
 class GInsWsr(GIns):
@@ -1391,7 +1379,10 @@ class IBnMovr(GInsIndReg):
         dst_wdr = m.get_gpr(self.xd)
         src_wdr = m.get_gpr(self.xs)
         m.set_reg(dst_wdr, m.get_reg(src_wdr))
-        super().exec_inc(m)
+        if self.inc_xd:
+            m.inc_gpr(self.xd)
+        if self.inc_xs:
+            m.inc_gpr(self.xs)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
 
@@ -1408,8 +1399,16 @@ class IBnLid(GInsIndLs):
 
         dst_wdr = m.get_gpr(self.x1)
         dmem_addr = self.offset + (m.get_gpr(self.x2))
+        if (self.ctx.dmem_byte_addressing):
+            dmem_addr = dmem_addr // 32
         m.set_reg(dst_wdr, m.get_dmem(dmem_addr))
-        super().exec_inc(m)
+        if self.inc_x1:
+            m.inc_gpr(self.x1)
+        if self.inc_x2:
+            if (self.ctx.dmem_byte_addressing):
+                m.inc_gpr_wlen_bytes(self.x2)
+            else:
+                m.inc_gpr(self.x2)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
 
@@ -1425,8 +1424,16 @@ class IBnSid(GInsIndLs):
     def execute(self, m):
         src_wdr = m.get_gpr(self.x1)
         dmem_addr = self.offset + (m.get_gpr(self.x2))
+        if (self.ctx.dmem_byte_addressing):
+            dmem_addr = dmem_addr // 32
         m.set_dmem(dmem_addr, m.get_reg(src_wdr))
-        super().exec_inc(m)
+        if self.inc_x1:
+            m.inc_gpr(self.x1)
+        if self.inc_x2:
+            if (self.ctx.dmem_byte_addressing):
+                m.inc_gpr_wlen_bytes(self.x2)
+            else:
+                m.inc_gpr(self.x2)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
 

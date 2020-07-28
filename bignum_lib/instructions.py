@@ -300,6 +300,7 @@ class InsContext(object):
     loopranges = []
     functioncnt = 0
     labelcnt = 0
+    dmem_byte_addressing = False
 
     def get_or_add_function(self, addr):
         if addr not in self.functions:
@@ -321,7 +322,7 @@ class InsContext(object):
 
 
 class AsmCtx:
-    def __init__(self, functions, loopclose, labels):
+    def __init__(self, functions, loopclose, labels, dmem_byte_addressing=False):
 
         # function_name : (addr,[len])
         # Dictionary with function name as key, referring to tuple of addr and optional length
@@ -342,6 +343,7 @@ class AsmCtx:
                 self.ins_ctx.functions.update({functions[k]: k})
         self.ins_ctx.loopranges = [range(k, v) for k, v in loopclose.items()]
         self.ins_ctx.labels = {v: k for k, v in labels.items()}
+        self.ins_ctx.dmem_byte_addressing = dmem_byte_addressing
 
     def get_addr_for_function_name(self, fun_str, format='std'):
         """return destination address for function name (as parameter) and check proper formatting"""

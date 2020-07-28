@@ -44,9 +44,9 @@ def ins_objects_from_hex_file(hex_file):
     return disassembler.get_instruction_objects(), disassembler.ctx
 
 
-def ins_objects_from_asm_file(asm_file):
+def ins_objects_from_asm_file(asm_file, dmem_byte_addressing=False):
     lines = asm_file.readlines()
-    assembler = Assembler(lines)
+    assembler = Assembler(lines, dmem_byte_addressing=dmem_byte_addressing)
     assembler.assemble()
     return assembler.get_instruction_objects(), assembler.get_instruction_context(), assembler.breakpoints
 

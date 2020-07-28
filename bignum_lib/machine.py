@@ -433,6 +433,12 @@ class Machine(object):
             raise Exception('Invalid GPR referenced')
         self.set_gpr(gpr, (self.get_gpr(gpr) + 1) & self.limb_mask)
 
+    def inc_gpr_wlen_bytes(self, gpr):
+        """Increment a GPR value"""
+        if not (32 > gpr >= 0):
+            raise Exception('Invalid GPR referenced')
+        self.set_gpr(gpr, (self.get_gpr(gpr) + self.XLEN//8) & self.limb_mask)
+
     def get_acc(self):
         """Get current accumulator value"""
         return self.acc
