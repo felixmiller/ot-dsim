@@ -1430,13 +1430,13 @@ class ICmp(GIStd):
 
     def convert_otbn(self, addr):
         if self.MNEM.get(self.fun) == 'cmp':
-            return [IBnCmp(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)]
+            return [IBnCmp(self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)]
         if self.MNEM.get(self.fun) == 'cmpx':
-            return [IBnCmp(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)]
+            return [IBnCmp(self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)]
         if self.MNEM.get(self.fun) == 'cmpb':
-            return [IBnCmpb(self.rd, self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)]
+            return [IBnCmpb(self.rs1, self.rs2, 'standard', 'left', 0, self.ctx)]
         if self.MNEM.get(self.fun) == 'cmpbx':
-            return [IBnCmpb(self.rd, self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)]
+            return [IBnCmpb(self.rs1, self.rs2, 'extension', 'left', 0, self.ctx)]
         return None
 
     def execute(self, m):

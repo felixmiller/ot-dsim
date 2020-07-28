@@ -130,6 +130,20 @@ def _get_three_wdr_with_flag_group_and_shift(asm_str):
     return wrd, wrs1, wrs2, shift_type, shift_bits, flag_group
 
 
+def _get_two_wdr_with_flag_group_and_shift(asm_str):
+    """decode the full BN compare format with ws1 and optional flag group and
+    possibly shifted rs2 (e.g.: "w5, w7 >> 128")"""
+    substr = asm_str.split(',')
+    if not (len(substr) == 2 or len(substr) == 3):
+        raise SyntaxError('Syntax error in parameter set. Expected two reg references and optional flag group')
+    wrs1 = _get_single_wdr(substr[0].strip())
+    wrs2, shift_type, shift_bits = _get_single_shifted_wdr(substr[1].strip())
+    flag_group = 'standard'
+    if len(substr) == 3:
+        flag_group = _get_flag_group(substr[2].strip())
+    return wrs1, wrs2, shift_type, shift_bits, flag_group
+
+
 def _get_three_wdr_with_flag_group_and_flag(asm_str):
     """decode the full BN format with wrd, wrs1, optional flag group and flag"""
     substr = asm_str.split(',')
@@ -794,13 +808,13 @@ class IBnSub(GInsBnShift):
         return trace_str, None
 
 
-class IBnCmp(GInsBnShift):
+class IBnCmp(GInsBnCmpShift):
     """Cmp instruction with one shifted input"""
 
     MNEM = 'BN.CMP'
 
-    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
-        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+    def __init__(self, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
 
     def get_asm_str(self):
         return super().get_asm_str()
@@ -865,13 +879,13 @@ class IBnSubb(GInsBnShift):
         return trace_str, None
 
 
-class IBnCmpb(GInsBnShift):
+class IBnCmpb(GInsBnCmpShift):
     """Cmp with borrow instruction with one shifted input"""
 
     MNEM = 'BN.CMPB'
 
-    def __init__(self, rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
-        super().__init__(rd, rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
+    def __init__(self, rs1, rs2, flag_group, shift_type, shift_bytes, ctx):
+        super().__init__(rs1, rs2, flag_group, shift_type, shift_bytes, ctx)
 
     def get_asm_str(self):
         return super().get_asm_str()
