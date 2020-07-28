@@ -71,9 +71,9 @@ def _get_single_shifted_wdr(asm_str):
 
     wdr = _get_single_wdr(substr[0].strip())
     if substr[1].strip().lower().endswith('b'):
-        shift_bytes = int(substr[1].strip()[:-1])
-        if not shift_bytes.isdigit():
+        if not substr[1].strip()[:-1].isdigit():
             raise SyntaxError('input shift immediate not a number')
+        shift_bytes = int(substr[1].strip()[:-1])
         shift_bits = int(shift_bytes)*8
     else:
         shift_bits_str = substr[1].strip()
