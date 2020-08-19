@@ -24,6 +24,7 @@ from . instructions_ot import IBnMov
 from . instructions_ot import IBnMovr
 from . instructions_ot import IBnLid
 from . instructions_ot import IBnSid
+from . instructions_ot import IBnWsrrw
 
 from . instructions_ot import IOtLoopi
 from . instructions_ot import IOtLoop
@@ -1589,6 +1590,11 @@ class ILdSt2(GIStd):
         ret += cls.enc_op(cls.OP)
         ret += cls.enc_fun(cls.get_bin_for_mnem(mnem))
         return cls(ret, ctx.ins_ctx)
+
+    def convert_otbn(self, addr):
+        if self.MNEM.get(self.fun) == 'strnd':
+            return [IBnWsrrw(self.rd, 2, self.rd, self.ctx)]
+        return None
 
     def execute(self, m):
         if self.MNEM.get(self.fun) == 'ldmod':
