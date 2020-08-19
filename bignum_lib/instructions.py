@@ -1658,7 +1658,8 @@ class ILdi(GIWideImm):
         return cls(ret, ctx.ins_ctx)
 
     def convert_otbn(self, addr):
-        return [IOtAddi(3, 0, self.rd, self.ctx), IBnLid(3, 0, 0, 0, self.idx, self.ctx)]
+        dmem_mult = 32 if self.ctx.dmem_byte_addressing else 1
+        return [IOtAddi(3, 0, self.rd, self.ctx), IBnLid(3, 0, 0, 0, self.idx*dmem_mult, self.ctx)]
 
     def execute(self, m):
         m.set_reg(self.rd, m.get_dmem(self.idx))
@@ -1956,7 +1957,7 @@ class ISt(GIStd):
         logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xd))
         logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xs))
         if self.inc_src and self.inc_dst:
-            return [IBnSid(xs, 1, xd, 0, offset, self.ctx), IOtAddi(xd, xd, 1, self.ctx)]
+            return [IBnSid(xs, 0, xd, 1, offset, self.ctx), IOtAddi(xs, xs, 1, self.ctx)]
         else:
             return [IBnSid(xs, self.inc_src, xd, self.inc_dst, offset, self.ctx)]
 
@@ -2047,7 +2048,7 @@ class ILd(GIStd):
             logging.info("OTBN conversion: Mapping rfp limb " + str(self.limb_dst) + " on GPR x" + str(xd))
             logging.info("OTBN conversion: Mapping dmp limb " + str(self.limb_src) + " on GPR x" + str(xs))
             if self.inc_src and self.inc_dst:
-                return [IBnLid(xd, 1, xd, 0, offset, self.ctx), IOtAddi(xs, xs, 1, self.ctx)]
+                return [IBnLid(xd, 0, xd, 1, offset, self.ctx), IOtAddi(xd, xd, 1, self.ctx)]
             else:
                 return [IBnLid(xd, self.inc_dst, xs, self.inc_src, offset, self.ctx)]
         return None

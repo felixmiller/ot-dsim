@@ -29,6 +29,9 @@ def main():
     argparser.add_argument('-a', '--addresses',
                            help='print address for each instruction',
                            action='store_true')
+    argparser.add_argument('-w', '--dmem-word-addressing',
+                           help='use WLEN word addressing for dmem instead of byte addressing',
+                           action='store_true')
     argparser.parse_args()
     args = argparser.parse_args()
 
@@ -39,7 +42,8 @@ def main():
         exit()
 
     """Load binary executable from file"""
-    ins_objects, ctx, _ = ins_objects_from_asm_file(infile)
+    byte_addressing = not args.dmem_word_addressing
+    ins_objects, ctx, _ = ins_objects_from_asm_file(infile, dmem_byte_addressing=byte_addressing)
     infile.close()
 
     ins_objects_push = [0]*len(ins_objects)

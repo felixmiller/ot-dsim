@@ -31,15 +31,15 @@ PROGRAM_ASM_FILE = 'asm/dcrypto_bn.asm'
 PROGRAM_OTBN_ASM_FILE = 'asm/otbn_bn.asm'
 
 # pointers to dmem areas according to calling conventions for bignum lib
-DMEMP_IN = 38
-DMEMP_MOD = 4
-DMEMP_RR = 22
-DMEMP_EXP = 54
-DMEMP_OUT = 71
-DMEMP_DINV = 20
-DMEMP_BLINDING = 21
-DMEMP_BIN = 87
-DMEMP_BOUT = 103
+DMEMP_IN = 38*32
+DMEMP_MOD = 4*32
+DMEMP_RR = 22*32
+DMEMP_EXP = 54*32
+DMEMP_OUT = 71*32
+DMEMP_DINV = 20*32
+DMEMP_BLINDING = 21*32
+DMEMP_BIN = 87*32
+DMEMP_BOUT = 103*32
 
 DMEM_LOC_IN_PTRS = 0
 DMEM_LOC_SQR_PTRS = 1
@@ -263,7 +263,7 @@ def run_modload(bn_words):
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
-    dinv_res = dmem[DMEMP_DINV]
+    dinv_res = dmem[DMEMP_DINV//32]
     rr_res = get_full_bn_val(DMEMP_RR, machine, bn_words)
     return dinv_res, rr_res
 
