@@ -282,7 +282,7 @@ def run_isoncurve(x, y):
     global ctx
     global stats
     load_pointer()
-    machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['p256init'], stop_addr_dict['p256init'], ctx=ctx, breakpoints=breakpoints)
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
@@ -293,8 +293,8 @@ def run_isoncurve(x, y):
     load_x(x)
     load_y(y)
     machine.dmem = dmem.copy()
-    machine.pc = P256ISONCURVE_START_ADDR
-    machine.stop_addr = P256ISONCURVE_STOP_ADDR
+    machine.pc = start_addr_dict['p256isoncurve']
+    machine.stop_addr = stop_addr_dict['p256isoncurve']
     cont = True
     machine.stats = stats
     while cont:
@@ -307,6 +307,7 @@ def run_isoncurve(x, y):
     on_curve = (dmem[pS] == dmem[pR])
     return on_curve
 
+
 def run_scalarmult(x, y, k):
     """Runs the scalarmult primitive to multiply a curve point with a scalar"""
     global dmem
@@ -314,8 +315,9 @@ def run_scalarmult(x, y, k):
     global cycle_cnt
     global ctx
     global stats
+    global breakpoints
     load_pointer()
-    machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['p256init'], stop_addr_dict['p256init'], ctx=ctx, breakpoints=breakpoints)
     machine.stats = stats
     cont = True
     while cont:
@@ -328,8 +330,8 @@ def run_scalarmult(x, y, k):
     load_y(y)
     load_k(k)
     machine.dmem = dmem.copy()
-    machine.pc = P256SCALARMULT_START_ADDR
-    machine.stop_addr = P256SCALARMULT_STOP_ADDR
+    machine.pc = start_addr_dict['p256scalarmult']
+    machine.stop_addr = stop_addr_dict['p256scalarmult']
     machine.stats = stats
     cont = True
     while cont:
@@ -348,8 +350,9 @@ def run_sign(d, k, msg):
     global cycle_cnt
     global ctx
     global stats
+    global breakpoints
     load_pointer()
-    machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['p256init'], stop_addr_dict['p256init'], ctx=ctx, breakpoints=breakpoints)
     cont = True
     while cont:
         cont, trace_str, cycles = machine.step()
@@ -361,8 +364,8 @@ def run_sign(d, k, msg):
     load_d(d)
     load_k(k)
     machine.dmem = dmem.copy()
-    machine.pc = P256SIGN_START_ADDR
-    machine.stop_addr = P256SIGN_STOP_ADDR
+    machine.pc = start_addr_dict['p256sign']
+    machine.stop_addr = stop_addr_dict['p256sign']
     machine.stats = stats
     cont = True
     while cont:
@@ -381,8 +384,9 @@ def run_verify(x, y, r, s, msg):
     global cycle_cnt
     global ctx
     global stats
+    global breakpoints
     load_pointer()
-    machine = Machine(dmem.copy(), ins_objects, P256INIT_START_ADDR, P256INIT_STOP_ADDR, ctx=ctx)
+    machine = Machine(dmem.copy(), ins_objects, start_addr_dict['p256init'], stop_addr_dict['p256init'], ctx=ctx, breakpoints=breakpoints)
     machine.stats = stats
     cont = True
     while cont:
@@ -397,8 +401,8 @@ def run_verify(x, y, r, s, msg):
     load_s(s)
     load_msg(msg)
     machine.dmem = dmem.copy()
-    machine.pc = P256VERIFY_START_ADDR
-    machine.stop_addr = P256VERIFY_STOP_ADDR
+    machine.pc = start_addr_dict['p256verify']
+    machine.stop_addr = stop_addr_dict['p256verify']
     machine.stats = stats
     cont = True
     while cont:
