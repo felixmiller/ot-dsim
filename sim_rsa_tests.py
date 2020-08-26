@@ -183,6 +183,9 @@ def load_program_hex():
     global ctx
     global start_addr_dict
     global stop_addr_dict
+    global breakpoints
+
+    breakpoints = {}
 
     insfile = open(PROGRAM_HEX_FILE)
     ins_objects, ctx = ins_objects_from_hex_file(insfile)
