@@ -258,7 +258,7 @@ def run_modload(bn_words):
     global ctx
 
     load_pointer(bn_words, DMEM_LOC_IN_PTRS, DMEMP_IN, DMEMP_EXP, DMEMP_OUT)
-    breakpoints.append(start_addr_dict['modload'])
+    #breakpoints.append(start_addr_dict['modload'])
     machine = Machine(dmem.copy(), ins_objects, start_addr_dict['modload'], stop_addr_dict['modload'], ctx=ctx, breakpoints=breakpoints)
     machine.stats = stats
     cont = True
