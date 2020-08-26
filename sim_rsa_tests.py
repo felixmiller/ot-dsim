@@ -19,6 +19,7 @@ ENABLE_TRACE_DUMP = False
 STATS_CONFIG = {
     'instruction_histo_sort_by': 'key',
 }
+DMEM_BYTE_ADDRESSING=True
 
 BN_WORD_LEN = 256
 BN_LIMB_LEN = 32
@@ -28,18 +29,19 @@ BN_MAX_WORDS = 16  # Max number of bn words per val (for 4096 bit words)
 DMEM_DEPTH = 1024
 PROGRAM_HEX_FILE = 'hex/dcrypto_bn.hex'
 PROGRAM_ASM_FILE = 'asm/dcrypto_bn.asm'
-PROGRAM_OTBN_ASM_FILE = 'asm/otbn_bn.asm'
+PROGRAM_OTBN_ASM_FILE = 'asm/modexp.S'
 
 # pointers to dmem areas according to calling conventions for bignum lib
-DMEMP_IN = 38*32
-DMEMP_MOD = 4*32
-DMEMP_RR = 22*32
-DMEMP_EXP = 54*32
-DMEMP_OUT = 71*32
-DMEMP_DINV = 20*32
-DMEMP_BLINDING = 21*32
-DMEMP_BIN = 87*32
-DMEMP_BOUT = 103*32
+dmem_mult = 32 if DMEM_BYTE_ADDRESSING else 1
+DMEMP_IN = 38*dmem_mult
+DMEMP_MOD = 4*dmem_mult
+DMEMP_RR = 22*dmem_mult
+DMEMP_EXP = 54*dmem_mult
+DMEMP_OUT = 71*dmem_mult
+DMEMP_DINV = 20*dmem_mult
+DMEMP_BLINDING = 21*dmem_mult
+DMEMP_BIN = 87*dmem_mult
+DMEMP_BOUT = 103*dmem_mult
 
 DMEM_LOC_IN_PTRS = 0
 DMEM_LOC_SQR_PTRS = 1
@@ -158,14 +160,14 @@ def load_blinding(pubexp, rnd, pad1, pad2):
 def load_full_bn_val(dmem_p, bn_val):
     """Load a full multi-word bignum value into dmem"""
     for i in range(0, BN_MAX_WORDS):
-        dmem[dmem_p+i] = (bn_val >> (BN_WORD_LEN*i)) & BN_MASK
+        dmem[dmem_p//dmem_mult+i] = (bn_val >> (BN_WORD_LEN*i)) & BN_MASK
 
 
 def get_full_bn_val(dmem_p, machine, bn_words=BN_MAX_WORDS):
     """Get a full multi-word bignum value form dmem"""
     bn_val = 0
     for i in range(0, bn_words):
-        bn_val += machine.get_dmem(i+dmem_p) << (BN_WORD_LEN*i)
+        bn_val += machine.get_dmem(i+dmem_p//dmem_mult) << (BN_WORD_LEN*i)
     return bn_val
 
 
@@ -221,7 +223,7 @@ def load_program_otbn_asm():
     global breakpoints
 
     insfile = open(PROGRAM_OTBN_ASM_FILE)
-    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile)
+    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile, dmem_byte_addressing=DMEM_BYTE_ADDRESSING)
     insfile.close()
 
     # reverse label address dictionary for function addresses (OTBN asm does not differentiate between generic
@@ -263,7 +265,7 @@ def run_modload(bn_words):
         inst_cnt += 1
         cycle_cnt += cycles
     dmem = machine.dmem.copy()
-    dinv_res = dmem[DMEMP_DINV//32]
+    dinv_res = dmem[DMEMP_DINV//dmem_mult]
     rr_res = get_full_bn_val(DMEMP_RR, machine, bn_words)
     return dinv_res, rr_res
 
