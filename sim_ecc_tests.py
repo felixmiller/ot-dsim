@@ -33,7 +33,8 @@ BN_LIMB_MASK = 2**BN_LIMB_LEN-1
 #BN_MAX_WORDS = 16  # Max number of bn words per val (for 4096 bit words)
 DMEM_DEPTH = 1024
 PROGRAM_HEX_FILE = 'hex/dcrypto_p256.hex'
-PROGRAM_ASM_FILE = 'asm/dcrypto_p256.asm'
+PROGRAM_ASM_FILE = 'asm/dcrypto_p256.asm_anno'
+PROGRAM_OTBN_ASM_FILE = 'asm/dcrypto_p256.otbn_asm'
 
 # pointers to dmem areas according to calling conventions of the p256 lib
 pLoc = 0  # Location of pointer in dmem
@@ -201,24 +202,77 @@ def load_d(d):
 
 # Program loading
 def load_program_hex():
+    """Load binary executable from file"""
     global ins_objects
     global ctx
-    """Load binary executable from file"""
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
+
+    breakpoints = {}
+
     insfile = open(PROGRAM_HEX_FILE)
     ins_objects, ctx = ins_objects_from_hex_file(insfile)
     insfile.close()
 
+    start_addr_dict = {'p256init': P256INIT_START_ADDR, 'p256isoncurve': P256ISONCURVE_START_ADDR,
+                       'p256scalarmult': P256SCALARMULT_START_ADDR, 'p256sign': P256SIGN_START_ADDR,
+                       'p256verify': P256VERIFY_START_ADDR}
+    stop_addr_dict = {'p256init': P256INIT_STOP_ADDR, 'p256isoncurve': P256ISONCURVE_STOP_ADDR,
+                       'p256scalarmult': P256SCALARMULT_STOP_ADDR, 'p256sign': P256SIGN_STOP_ADDR,
+                       'p256verify': P256VERIFY_STOP_ADDR}
+
+
+
 def load_program_asm():
+    """Load program from assembly file"""
     global ins_objects
     global ctx
-    """Load binary executable from file"""
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
+
     insfile = open(PROGRAM_ASM_FILE)
-    ins_objects, ctx = ins_objects_from_asm_file(insfile)
+    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile)
     insfile.close()
+
+    # reverse function address dictionary
+    function_addr = {v: k for k, v in ctx.functions.items()}
+    start_addr_dict = {'p256init': function_addr['p256init'], 'p256isoncurve': function_addr['p256isoncurve'],
+                       'p256scalarmult': function_addr['p256scalarmult'], 'p256sign': function_addr['p256sign'],
+                       'p256verify': function_addr['p256verify']}
+    stop_addr_dict = {'p256init': function_addr['MulMod']-1, 'p256isoncurve': function_addr['ProjAdd']-1,
+                       'p256scalarmult': len(ins_objects)-1, 'p256sign': function_addr['p256scalarbasemult']-1,
+                       'p256verify': function_addr['p256scalarmult']-1}
+
+
+def load_program_otbn_asm():
+    """Load program from otbn assembly file"""
+    global ins_objects
+    global ctx
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
+
+    insfile = open(PROGRAM_OTBN_ASM_FILE)
+    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile)
+    insfile.close()
+
+    # reverse label address dictionary for function addresses (OTBN asm does not differantiate between generic
+    # und function labels)
+    function_addr = {v: k for k, v in ctx.labels.items()}
+    start_addr_dict = {'p256init': function_addr['p256init'], 'p256isoncurve': function_addr['p256isoncurve'],
+                       'p256scalarmult': function_addr['p256scalarmult'], 'p256sign': function_addr['p256sign'],
+                       'p256verify': function_addr['p256verify']}
+    stop_addr_dict = {'p256init': function_addr['MulMod']-1, 'p256isoncurve': function_addr['ProjAdd']-1,
+                       'p256scalarmult': len(ins_objects)-1, 'p256sign': function_addr['p256scalarbasemult']-1,
+                       'p256verify': function_addr['p256scalarmult']-1}
+
 
 def dump_trace_str(trace_string):
     if ENABLE_TRACE_DUMP:
         print(trace_string)
+
 
 def run_isoncurve(x, y):
     """Runs the isoncurve primitive to check if a point is a valid curve point"""
@@ -472,18 +526,24 @@ def run_test(name):
 
 
 def main():
+    """main"""
     global inst_cnt
     global cycle_cnt
     global ctx
     global stats
-    """main"""
+    global start_addr_dict
+    global stop_addr_dict
+    global breakpoints
+
     init_dmem()
 
     inst_cnt = 0
     cycle_cnt = 0
 
-    #load_program_hex()
-    load_program_asm()
+    # select program source
+    load_program_hex()
+    #load_program_asm()
+    #load_program_otbn_asm()
 
     # curve point test (deterministic)
     print_test_headline(1, 8, "curve point test (deterministic)")
