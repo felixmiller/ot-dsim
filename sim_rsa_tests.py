@@ -506,6 +506,9 @@ def main():
 
         dump_stats(stats, STATS_CONFIG)
 
+        print('Cycle count: ' + str(cycle_cnt))
+        print('Instruction count ' + str(inst_cnt))
+
         print("\n\n")
 
 
