@@ -88,7 +88,7 @@ BN.SUB w3, w3, w3, FG1
 LOOP x30, 3
 BN.LID x10, 0(x16++)
 BN.MOVR x11, x8++
-BN.CMPB w0, w3, w2, FG1
+BN.CMPB w3, w2, FG1
 JAL x1, selcxSub
 ADDI x0, x0, 0
 ADDI x8, x0, 5
@@ -308,7 +308,7 @@ BN.SUB w2, w2, w2, FG1
 LOOP x30, 3
 BN.LID x9, 0(x16++)
 BN.MOVR x11, x8++
-BN.CMPB w0, w3, w2, FG1
+BN.CMPB w3, w2, FG1
 ADDI x8, x0, 4
 ADDI x10, x0, 4
 ADDI x16, x6, 0
