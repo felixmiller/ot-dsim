@@ -94,7 +94,7 @@ ADDI x0, x0, 0
 ADDI x8, x0, 5
 LOOP x30, 2
 BN.SID x8++, 0(x18)
-ADDI x18, x18, 1
+ADDI x18, x18, 32
 JALR x0, x1, 0
 
 dmXd0:
@@ -256,7 +256,7 @@ ADD x20, x6, x0
 ADDI x8, x0, 4
 LOOP x30, 2
 BN.SID x8++, 0(x21)
-ADDI x21, x21, 1
+ADDI x21, x21, 32
 ADDI x8, x0, 4
 JALR x0, x1, 0
 
@@ -352,7 +352,7 @@ ADDI x10, x0, 4
 ADDI x8, x0, 4
 LOOP x30, 2
 BN.SID x8++, 0(x21)
-ADDI x21, x21, 1
+ADDI x21, x21, 32
 ADDI x8, x0, 4
 ADDI x10, x0, 4
 LW x12, 4(x0)
@@ -466,7 +466,7 @@ BN.SID x11, 0(x20++)
 JAL x1, selOutOrC
 ADDI x0, x0, 0
 ADDI x3, x0, 0
-BN.LID x3, 3(x0)
+BN.LID x3, 96(x0)
 LW x16, 24(x0)
 LW x17, 25(x0)
 LW x18, 26(x0)
