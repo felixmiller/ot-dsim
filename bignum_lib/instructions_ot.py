@@ -1032,7 +1032,7 @@ class GInsBnMulqacc(GInsBn):
     def get_asm_str(self):
         asm_str = self.MNEM
         if self.rd is not None:
-            asm_str =  ' w' + str(self.rd)
+            asm_str +=  ' w' + str(self.rd)
             if self.wrd_hw_sel == 'upper':
                 asm_str += 'U'
             else:
