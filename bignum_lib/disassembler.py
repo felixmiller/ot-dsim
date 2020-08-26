@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from . instructions import *
-from . instructions_ot import *
 
 
 class Disassembler:
