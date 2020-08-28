@@ -28,7 +28,33 @@ class Assembler:
         loopclose = {}
         labels = {}
         loop_stack = []
+        comment_mode = False
         for i, line in enumerate(self.lines):
+
+            # remove comments
+            line_acc = ''
+            while True:
+                if comment_mode:
+                    if '*/' not in line:
+                        break
+                    else:
+                        line = line.split('*/', 1)[1]
+                        comment_mode = False
+                else:
+                    if '/*' not in line:
+                        line_acc += line
+                        break
+                    else:
+                        line_acc += line.split('/*', 1)[0]
+                        line = line.split('/*', 1)[1]
+                        comment_mode = True
+            if comment_mode:
+                continue
+
+            line = line_acc
+
+            if line.strip().startswith('.'):
+                continue
             line = line.split(';')[0].strip()
             tokens = line.strip().split()
             if not tokens:
