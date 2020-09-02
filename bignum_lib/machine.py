@@ -469,8 +469,8 @@ class Machine(object):
 
     def get_dmem_otbn(self, address):
         """Get value for a dmem address in otbn format"""
-        dmem_addr = address//8
-        limb = address%8
+        dmem_addr = address//32
+        limb = (address%32)//4
         self.__check_dmem_addr(dmem_addr)
         return self.__get_limb_from_reg_val(limb, self.dmem[dmem_addr])
 
