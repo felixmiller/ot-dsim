@@ -1182,6 +1182,7 @@ class IBnAnd(GInsBnShift):
     def execute(self, m):
         rs2op = self.exec_shift(m)
         res = (m.get_reg(self.rs1) & rs2op) & m.xlen_mask
+        self.exec_set_zml_flags(res, m)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
@@ -1270,6 +1271,7 @@ class IBnNot(GIns):
         else:
             rs2op = (m.get_reg(self.rs) << self.shift_bytes*8) & m.xlen_mask
         res = (~rs2op) & m.xlen_mask
+        self.exec_set_zml_flags(res, m)
         m.set_reg(self.rd, res)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
