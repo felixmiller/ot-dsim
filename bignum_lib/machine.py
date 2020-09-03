@@ -25,8 +25,8 @@ class Machine(object):
     CSR_FLAG = 0x7C0
     CSR_MOD_BASE = 0x7D0
     CSR_RNG = 0xFC0
-    WSR_MOD = 0x1
-    WSR_RND = 0x2
+    WSR_MOD = 0x0
+    WSR_RND = 0x1
 
     # breakpoints is dictionary with break addresses being keys and
     # values are tuples of number of passes required and the pass counter

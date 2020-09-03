@@ -1593,7 +1593,7 @@ class ILdSt2(GIStd):
 
     def convert_otbn(self, addr):
         if self.MNEM.get(self.fun) == 'strnd':
-            return [IBnWsrrw(self.rd, 2, self.rd, self.ctx)]
+            return [IBnWsrrw(self.rd, 1, self.rd, self.ctx)]
         return None
 
     def execute(self, m):
