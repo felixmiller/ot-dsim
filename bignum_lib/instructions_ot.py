@@ -1462,7 +1462,7 @@ class IBnWsrrw(GInsWsr):
     def execute(self, m):
         wsr_val = m.get_wsr(self.wsr)
         m.set_reg(self.wrd, wsr_val)
-        wsr_new = m.get_gpr(self.wrs)
+        wsr_new = m.get_reg(self.wrs)
         m.set_wsr(self.wsr, wsr_new)
         trace_str = self.get_asm_str()[1]
         return trace_str, None
