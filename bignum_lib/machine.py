@@ -962,11 +962,12 @@ class Machine(object):
             else:
                 print('Invalid command.')
 
-    def finish(self):
+    def finish(self, breakpoint=True):
         """Call this when a final 'ret' occurs without anything on the call stack"""
         self.finishFlag = True
         # break here
-        self.toggle_breakpoint(self.get_pc())
+        if breakpoint:
+            self.toggle_breakpoint(self.get_pc())
 
     def step(self):
         """Next step"""
@@ -975,7 +976,8 @@ class Machine(object):
             halt = True  # halt after this instruction
 
         if self.finishFlag:
-            print('\nReached \'ret\' instruction with empty call stack. Finishing here.\n')
+            halt = True
+            print('\nECALL hit or reached \'ret\' instruction with empty call stack. Finishing here.\n')
 
         is_break, passes = self.__check_break()
         if is_break:

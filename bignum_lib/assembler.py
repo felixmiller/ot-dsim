@@ -10,7 +10,7 @@ class Assembler:
     # Tokens
     TOK_FUNCTION = "function"
     TOK_LOOP = ['loop', 'OT.LOOP', 'OT.LOOPI', 'LOOP', 'LOOPI']
-    TOK_SPECIAL = [')', '}', 'endloop','break','ecall']
+    TOK_SPECIAL = [')', '}', 'endloop','break']
 
     def __init__(self, lines, dmem_byte_addressing=False):
         self.funclose =  [] # List of addresses where functions are closed

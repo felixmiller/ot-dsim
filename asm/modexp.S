@@ -333,7 +333,7 @@ ADDI x3, x0, 0
 BN.LID x3, 0(x0)
 JAL x1, setupPtrs
 JAL x1, mul1_exp
-JALR x0, x1, 0
+ECALL
 
 sqrx_exp:
 LW x16, 32(x0)
@@ -486,7 +486,7 @@ LW x21, 116(x0)
 LW x22, 120(x0)
 LW x23, 124(x0)
 JAL x1, mul1_exp
-JALR x0, x1, 0
+ECALL
 
 modload:
 BN.XOR w31, w31, w31
@@ -520,4 +520,4 @@ BN.LID x8, 0(x16)
 JAL x1, d0inv
 BN.SID x9, 0(x17)
 JAL x1, computeRR
-JALR x0, x1, 0
+ECALL

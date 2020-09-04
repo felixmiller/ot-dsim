@@ -1808,6 +1808,29 @@ class IOtJalr(IOtImm):
         return trace_str, jump_target
 
 
+class IOtEcall(GIns):
+    """ECALL instruction"""
+
+    MNEM = 'ECALL'
+
+    def __init__(self, addr, ctx, label=None):
+        self.addr = addr
+        super().__init__(ctx)
+
+    def get_asm_str(self):
+        asm_str = self.MNEM
+        return self.hex_str, asm_str, self.malformed
+
+    @classmethod
+    def enc(cls, addr, mnem, params, ctx):
+        return cls(addr, ctx.ins_ctx)
+
+    def execute(self, m):
+        m.finish(breakpoint=False)
+        trace_str = self.get_asm_str()[1]
+        return trace_str, None
+
+
 class IOtBne(IOtBranch):
     """Branch not equal"""
 
