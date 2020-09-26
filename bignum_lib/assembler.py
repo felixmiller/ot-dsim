@@ -12,18 +12,19 @@ class Assembler:
     TOK_LOOP = ['loop', 'OT.LOOP', 'OT.LOOPI', 'LOOP', 'LOOPI']
     TOK_SPECIAL = [')', '}', 'endloop','break']
 
-    def __init__(self, lines, dmem_byte_addressing=False):
+    def __init__(self, lines, dmem_byte_addressing=False, otbn_only=False):
+        self.otbn_only = otbn_only
         self.funclose =  [] # List of addresses where functions are closed
         self.instr = [] # the program (mnem, (param_string, line))
         self.ins_objects = []
         self.breakpoints = []
         self.ins_fac = InstructionFactory()
-        self.ins_fac_ot = InstructionFactoryOt()
+        self.ins_fac_ot = InstructionFactoryOt(to_lower=otbn_only)
         self.lines = lines
         self.ctx = self.__create_index(dmem_byte_addressing=dmem_byte_addressing)
         self.__check_fun_len()
 
-    def __create_index(self, dmem_byte_addressing=False):
+    def __create_index(self, dmem_byte_addressing=False, otbn_only=False):
         functions = {}
         loopclose = {}
         labels = {}
@@ -59,7 +60,7 @@ class Assembler:
             tokens = line.strip().split()
             if not tokens:
                 continue
-            if self.ins_fac.is_valid_mnem(tokens[0]):
+            if (not self.otbn_only) and self.ins_fac.is_valid_mnem(tokens[0]):
                 params = ''
                 if len(tokens) > 1:
                     params = line.strip().split(maxsplit=1)[1]
@@ -171,7 +172,7 @@ class Assembler:
             params = item[1][0]
             asm_str = mnem + ' ' + params
             try:
-                if self.ins_fac.is_valid_mnem(mnem):
+                if self.ins_fac.is_valid_mnem(mnem) and (not self.otbn_only):
                     ins_obj = self.ins_fac.factory_asm(address, asm_str, self.ctx)
                 else:
                     ins_obj = self.ins_fac_ot.factory_asm(address, asm_str, self.ctx)

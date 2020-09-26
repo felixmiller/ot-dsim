@@ -230,7 +230,7 @@ def load_program_otbn_asm():
     global breakpoints
 
     insfile = open(PROGRAM_OTBN_ASM_FILE)
-    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile, dmem_byte_addressing=DMEM_BYTE_ADDRESSING)
+    ins_objects, ctx, breakpoints = ins_objects_from_asm_file(insfile, dmem_byte_addressing=DMEM_BYTE_ADDRESSING, otbn_only=True)
     insfile.close()
 
     # reverse label address dictionary for function addresses (OTBN asm does not differentiate between generic

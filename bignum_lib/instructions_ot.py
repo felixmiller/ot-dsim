@@ -452,23 +452,26 @@ def _get_single_gpr_with_offset(asm_str):
 
 class InstructionFactory(object):
 
-    def __init__(self):
+    def __init__(self, to_lower=False):
         # Mapping of mnemonics to instruction classes
         self.mnem_map = {}
         self.opcode_map = {}
-        self.__register_mnemonics(GIns)
+        self.__register_mnemonics(GIns, to_lower)
 
-    def __register_mnemonics(self, class_p):
+    def __register_mnemonics(self, class_p, to_lower):
         """ Find all final classes derived from Ins and append their mnemonic and class type to dictionary"""
         for cls in class_p.__subclasses__():
             if len(cls.__subclasses__()) > 0:
-                self.__register_mnemonics(cls)
+                self.__register_mnemonics(cls, to_lower)
             else:
                 if isinstance(cls.MNEM, str):
                     if cls.MNEM in self.mnem_map:
                         raise Exception('Error adding mnemonic \'' + cls.MNEM + '\' for class ' + cls.__name__
                                         + '. Mnemonic already in use.')
-                    self.mnem_map.update({cls.MNEM: cls})
+                    if (to_lower):
+                        self.mnem_map.update({cls.MNEM.lower(): cls})
+                    else:
+                        self.mnem_map.update({cls.MNEM: cls})
                 elif isinstance(cls.MNEM, dict):
                     for item in cls.MNEM.values():
                         if item in self.mnem_map:
